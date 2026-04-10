@@ -10,4 +10,6 @@ protocol QRScanning: AnyObject {
 	var onDetectionChange: ((Bool) -> Void)? { get set }
 	func start() async throws
 	func stop()
+	/// Constrains detection to `layerRect`, expressed in the preview layer's coordinate space.
+	func setRegionOfInterest(_ layerRect: CGRect)
 }

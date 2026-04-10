@@ -12,6 +12,7 @@ final class QRScannerSpy: QRScanning {
 
 	private(set) var startCallCount = 0
 	private(set) var stopCallCount = 0
+	private(set) var regionOfInterestCalls: [CGRect] = []
 
 	var startError: Error?
 	var startBlocker: (@MainActor () async -> Void)?
@@ -35,6 +36,10 @@ final class QRScannerSpy: QRScanning {
 
 	func stop() {
 		stopCallCount += 1
+	}
+
+	func setRegionOfInterest(_ layerRect: CGRect) {
+		regionOfInterestCalls.append(layerRect)
 	}
 
 	func waitForStartEntered() async {

@@ -13,6 +13,10 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 
 	private let core: SessionCore
 	private var eventPump: Task<Void, Never>?
+	/// Most recent reticle rect in the preview layer's coordinate space.
+	/// Retained across stop/start so the ROI is re-applied on every
+	/// `start()` without requiring the view to re-publish a layout change.
+	private var lastLayerROI: CGRect?
 
 	init() {
 		let session = AVCaptureSession()
@@ -48,10 +52,29 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 
 	func start() async throws {
 		try await core.start()
+		// Re-push after every start: the first layout-driven push may have
+		// happened before the preview layer was connected to a configured
+		// session, so `metadataOutputRectConverted` returned `.null` and we
+		// silently dropped it. Now the conversion works.
+		pushRegionOfInterest()
 	}
 
 	func stop() {
 		Task { [core] in await core.stop() }
+	}
+
+	func setRegionOfInterest(_ layerRect: CGRect) {
+		lastLayerROI = layerRect
+		pushRegionOfInterest()
+	}
+
+	private func pushRegionOfInterest() {
+		guard let layerRect = lastLayerROI else { return }
+		// Conversion returns `.null` until the preview layer is connected to
+		// a configured session; leave the rect stashed for the next push.
+		let metadataRect = previewLayer.metadataOutputRectConverted(fromLayerRect: layerRect)
+		guard !metadataRect.isNull else { return }
+		Task { [core] in await core.setRectOfInterest(metadataRect) }
 	}
 
 	func setTorch(_ enabled: Bool) throws {

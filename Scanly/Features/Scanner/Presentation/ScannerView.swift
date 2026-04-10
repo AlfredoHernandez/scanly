@@ -88,6 +88,16 @@ struct ScannerView: View {
 				radius: 10,
 			)
 			.animation(.easeInOut(duration: 0.2), value: viewModel.isDetectingCode)
+			// `.global` assumes ScannerView is a root view whose preview
+			// layer starts at the window origin. If the view is ever pushed
+			// inside a NavigationStack or presented modally with a non-zero
+			// top inset, switch to a named coordinate space anchored on a
+			// container that matches the preview layer's extent.
+			.onGeometryChange(for: CGRect.self) { proxy in
+				proxy.frame(in: .global)
+			} action: { rect in
+				viewModel.updateRegionOfInterest(rect)
+			}
 	}
 
 	private var torchBar: some View {
@@ -123,6 +133,7 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	func start() async throws {}
 	func stop() {}
 	func setTorch(_: Bool) throws {}
+	func setRegionOfInterest(_: CGRect) {}
 }
 
 #Preview {

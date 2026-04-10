@@ -40,6 +40,10 @@ actor SessionCore {
 	private var detectionDebouncer = DetectionDebouncer()
 	private var idleTimerTask: Task<Void, Never>?
 	private var metadataDelegate: MetadataDelegate?
+	/// Retained across stop/start: writing `rectOfInterest` on it is a
+	/// no-op when the session isn't running but survives the next start.
+	private var metadataOutput: AVCaptureMetadataOutput?
+	private var desiredRectOfInterest: CGRect?
 
 	/// Idle gap after which a code is considered gone; spans ~7 frames at 30fps.
 	private static let detectionIdleTimeout: Duration = .milliseconds(250)
@@ -68,6 +72,11 @@ actor SessionCore {
 		epochStorage.withLock { $0 += 1 }
 		if !session.isRunning { session.startRunning() }
 		Logger.scanner.info("Capture session started")
+	}
+
+	func setRectOfInterest(_ rect: CGRect) {
+		desiredRectOfInterest = rect
+		metadataOutput?.rectOfInterest = rect
 	}
 
 	func stop() {
@@ -126,6 +135,10 @@ actor SessionCore {
 		metadataDelegate = delegate
 		output.setMetadataObjectsDelegate(delegate, queue: sessionQueue)
 		output.metadataObjectTypes = [.qr]
+		if let desiredRectOfInterest {
+			output.rectOfInterest = desiredRectOfInterest
+		}
+		metadataOutput = output
 
 		isConfigured = true
 	}
