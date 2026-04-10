@@ -24,6 +24,7 @@ final class ScannerViewModel {
 
 	private let scanner: QRScanning
 	private let torch: TorchControlling
+	private let haptics: HapticFeedbackControlling
 	private let parser: QRContentParsing
 	private let clock: @Sendable () -> Date
 
@@ -36,11 +37,13 @@ final class ScannerViewModel {
 	init(
 		scanner: QRScanning,
 		torch: TorchControlling,
-		parser: QRContentParsing = QRContentParser(),
+		haptics: HapticFeedbackControlling,
 		clock: @escaping @Sendable () -> Date,
+		parser: QRContentParsing = QRContentParser(),
 	) {
 		self.scanner = scanner
 		self.torch = torch
+		self.haptics = haptics
 		self.parser = parser
 		self.clock = clock
 		// `[weak self]`: scanner outlives the VM via the composition root.
@@ -140,6 +143,11 @@ final class ScannerViewModel {
 
 		let type = parser.parse(content)
 		latestResult = ScanResult(rawContent: content, type: type, scannedAt: clock())
+		// Fired here (not in the view) because the VM owns all four commit
+		// guards above and is the single source of truth for "a real scan
+		// just happened". Duplicating the predicate in the view via
+		// `.onChange(of: latestResult)` would re-derive the same decision.
+		haptics.playSuccess()
 		Logger.scanner.info("Scanned QR type=\(type.discriminator, privacy: .public) length=\(content.count, privacy: .public)")
 	}
 }

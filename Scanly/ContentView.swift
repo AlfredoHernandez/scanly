@@ -9,7 +9,12 @@ struct ContentView: View {
 
 	var body: some View {
 		ScannerView(
-			viewModel: ScannerViewModel(scanner: scanner, torch: scanner, clock: Date.init),
+			viewModel: ScannerViewModel(
+				scanner: scanner,
+				torch: scanner,
+				haptics: UIKitHapticFeedback(),
+				clock: Date.init,
+			),
 			previewProvider: scanner,
 			cameraControls: scanner,
 		)

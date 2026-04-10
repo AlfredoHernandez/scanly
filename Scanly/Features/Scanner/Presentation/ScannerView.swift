@@ -186,10 +186,20 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	func focus(at _: CGPoint) {}
 }
 
+@MainActor
+private final class PreviewHapticFeedback: HapticFeedbackControlling {
+	func playSuccess() {}
+}
+
 #Preview {
 	let stub = PreviewScannerStub()
 	return ScannerView(
-		viewModel: ScannerViewModel(scanner: stub, torch: stub, clock: Date.init),
+		viewModel: ScannerViewModel(
+			scanner: stub,
+			torch: stub,
+			haptics: PreviewHapticFeedback(),
+			clock: Date.init,
+		),
 		previewProvider: stub,
 		cameraControls: stub,
 	)
