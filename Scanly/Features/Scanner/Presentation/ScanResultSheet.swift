@@ -16,6 +16,10 @@ struct ScanResultSheet: View {
 						.font(.headline)
 				}
 
+				Section("scanner.result.format") {
+					Text(result.format.localizationKey)
+				}
+
 				Section("scanner.result.content") {
 					Text(result.rawContent)
 						.font(.body.monospaced())

@@ -173,7 +173,7 @@ private struct FocusRing: View {
 @MainActor
 private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer = AVCaptureVideoPreviewLayer()
-	var onScan: ((String) -> Void)?
+	var onScan: ((String, BarcodeFormat) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 	var isTorchAvailable: Bool {
 		true

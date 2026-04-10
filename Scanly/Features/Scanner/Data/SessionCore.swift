@@ -10,12 +10,12 @@ import os
 /// callback can re-enter via `assumeIsolated` without hopping threads.
 actor SessionCore {
 	enum Event {
-		case scanned(String, epoch: Int)
+		case scanned(String, format: BarcodeFormat, epoch: Int)
 		case detectionChanged(Bool, epoch: Int)
 
 		var epoch: Int {
 			switch self {
-			case let .scanned(_, epoch), let .detectionChanged(_, epoch): epoch
+			case let .scanned(_, _, epoch), let .detectionChanged(_, epoch): epoch
 			}
 		}
 	}
@@ -47,6 +47,22 @@ actor SessionCore {
 
 	/// Idle gap after which a code is considered gone; spans ~7 frames at 30fps.
 	private static let detectionIdleTimeout: Duration = .milliseconds(250)
+
+	/// Machine-readable code types we try to enable on `AVCaptureMetadataOutput`.
+	/// The actual list is intersected with `availableMetadataObjectTypes` at
+	/// configuration time, because assigning an unsupported type throws an
+	/// Objective-C exception that Swift cannot catch.
+	private static let desiredMetadataObjectTypes: [AVMetadataObject.ObjectType] = [
+		.qr,
+		.dataMatrix,
+		.pdf417,
+		.aztec,
+		.code128,
+		.code39,
+		.ean13,
+		.ean8,
+		.upce,
+	]
 
 	init(session: AVCaptureSession, queue: DispatchSerialQueue) {
 		self.session = session
@@ -146,13 +162,14 @@ actor SessionCore {
 		}
 		session.addOutput(output)
 
-		let delegate = MetadataDelegate(expectedQueue: sessionQueue) { [weak self] value in
+		let delegate = MetadataDelegate(expectedQueue: sessionQueue) { [weak self] value, format in
 			guard let self else { return }
-			assumeIsolated { $0.handleObservation(value) }
+			assumeIsolated { $0.handleObservation(value, format: format) }
 		}
 		metadataDelegate = delegate
 		output.setMetadataObjectsDelegate(delegate, queue: sessionQueue)
-		output.metadataObjectTypes = [.qr]
+		let available = Set(output.availableMetadataObjectTypes)
+		output.metadataObjectTypes = Self.desiredMetadataObjectTypes.filter(available.contains)
 		if let desiredRectOfInterest {
 			output.rectOfInterest = desiredRectOfInterest
 		}
@@ -161,13 +178,13 @@ actor SessionCore {
 		isConfigured = true
 	}
 
-	private func handleObservation(_ value: String) {
+	private func handleObservation(_ value: String, format: BarcodeFormat) {
 		let epoch = currentEpoch
 		idleTimerTask?.cancel()
 		if detectionDebouncer.noteObservation() {
 			eventContinuation.yield(.detectionChanged(true, epoch: epoch))
 		}
-		eventContinuation.yield(.scanned(value, epoch: epoch))
+		eventContinuation.yield(.scanned(value, format: format, epoch: epoch))
 		idleTimerTask = Task { [weak self] in
 			try? await Task.sleep(for: Self.detectionIdleTimeout)
 			guard !Task.isCancelled else { return }
@@ -185,9 +202,9 @@ actor SessionCore {
 
 private final nonisolated class MetadataDelegate: NSObject, AVCaptureMetadataOutputObjectsDelegate, Sendable {
 	private let expectedQueue: DispatchQueue
-	private let handler: @Sendable (String) -> Void
+	private let handler: @Sendable (String, BarcodeFormat) -> Void
 
-	init(expectedQueue: DispatchQueue, handler: @escaping @Sendable (String) -> Void) {
+	init(expectedQueue: DispatchQueue, handler: @escaping @Sendable (String, BarcodeFormat) -> Void) {
 		self.expectedQueue = expectedQueue
 		self.handler = handler
 		super.init()
@@ -200,12 +217,40 @@ private final nonisolated class MetadataDelegate: NSObject, AVCaptureMetadataOut
 	) {
 		dispatchPrecondition(condition: .onQueue(expectedQueue))
 		// Multi-code frames drop all but the first: the VM gates on `latestResult == nil`.
+		// Type filtering is unnecessary: AVFoundation only delivers objects
+		// whose type is in the output's `metadataObjectTypes`, which we set
+		// to our intersected allowlist at configuration time.
 		for object in metadataObjects {
 			guard let readable = object as? AVMetadataMachineReadableCodeObject,
-			      readable.type == .qr,
 			      let value = readable.stringValue else { continue }
-			handler(value)
+			handler(value, readable.type.barcodeFormat)
 			return
+		}
+	}
+}
+
+private nonisolated extension AVMetadataObject.ObjectType {
+	var barcodeFormat: BarcodeFormat {
+		switch self {
+		case .qr: .qr
+
+		case .dataMatrix: .dataMatrix
+
+		case .pdf417: .pdf417
+
+		case .aztec: .aztec
+
+		case .code128: .code128
+
+		case .code39: .code39
+
+		case .ean13: .ean13
+
+		case .ean8: .ean8
+
+		case .upce: .upce
+
+		default: .other
 		}
 	}
 }

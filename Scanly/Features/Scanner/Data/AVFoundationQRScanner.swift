@@ -8,7 +8,7 @@
 final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer: AVCaptureVideoPreviewLayer
 	let isTorchAvailable: Bool
-	var onScan: ((String) -> Void)?
+	var onScan: ((String, BarcodeFormat) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 
 	private let core: SessionCore
@@ -42,8 +42,8 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 				// buffered by a session that has since been stopped.
 				guard event.epoch >= core.currentEpoch else { continue }
 				switch event {
-				case let .scanned(value, _):
-					onScan?(value)
+				case let .scanned(value, format, _):
+					onScan?(value, format)
 
 				case let .detectionChanged(detecting, _):
 					onDetectionChange?(detecting)

@@ -47,8 +47,8 @@ final class ScannerViewModel {
 		self.parser = parser
 		self.clock = clock
 		// `[weak self]`: scanner outlives the VM via the composition root.
-		self.scanner.onScan = { [weak self] raw in
-			self?.handleScan(raw)
+		self.scanner.onScan = { [weak self] raw, format in
+			self?.handleScan(raw, format: format)
 		}
 		self.scanner.onDetectionChange = { [weak self] detecting in
 			self?.handleDetectionChange(detecting)
@@ -135,19 +135,25 @@ final class ScannerViewModel {
 		isDetectingCode = detecting
 	}
 
-	private func handleScan(_ raw: String) {
+	private func handleScan(_ raw: String, format: BarcodeFormat) {
 		guard case .scanning = state else { return }
 		guard latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
 
 		let type = parser.parse(content)
-		latestResult = ScanResult(rawContent: content, type: type, scannedAt: clock())
+		latestResult = ScanResult(
+			rawContent: content,
+			type: type,
+			format: format,
+			scannedAt: clock(),
+		)
 		// Fired here (not in the view) because the VM owns all four commit
 		// guards above and is the single source of truth for "a real scan
 		// just happened". Duplicating the predicate in the view via
 		// `.onChange(of: latestResult)` would re-derive the same decision.
 		haptics.playSuccess()
-		Logger.scanner.info("Scanned QR type=\(type.discriminator, privacy: .public) length=\(content.count, privacy: .public)")
+		Logger.scanner
+			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")
 	}
 }

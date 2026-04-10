@@ -137,6 +137,83 @@
         }
       }
     },
+    "scanner.format.aztec" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Aztec" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Aztec" } }
+      }
+    },
+    "scanner.format.code128" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Code 128" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Código 128" } }
+      }
+    },
+    "scanner.format.code39" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Code 39" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Código 39" } }
+      }
+    },
+    "scanner.format.data_matrix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Data Matrix" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Data Matrix" } }
+      }
+    },
+    "scanner.format.ean13" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "EAN-13" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "EAN-13" } }
+      }
+    },
+    "scanner.format.ean8" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "EAN-8" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "EAN-8" } }
+      }
+    },
+    "scanner.format.other" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Barcode" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Código de barras" } }
+      }
+    },
+    "scanner.format.pdf417" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "PDF417" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "PDF417" } }
+      }
+    },
+    "scanner.format.qr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "QR Code" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Código QR" } }
+      }
+    },
+    "scanner.format.upce" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "UPC-E" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "UPC-E" } }
+      }
+    },
+    "scanner.result.format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "es-MX" : { "stringUnit" : { "state" : "translated", "value" : "Formato" } }
+      }
+    },
     "scanner.result.title" : {
       "extractionState" : "manual",
       "localizations" : {
