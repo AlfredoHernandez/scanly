@@ -1,21 +1,20 @@
 //
-// Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
+//  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
+	@State private var scanner = AVFoundationQRScanner()
+
+	var body: some View {
+		ScannerView(
+			viewModel: ScannerViewModel(scanner: scanner, torch: scanner, clock: Date.init),
+			previewProvider: scanner,
+		)
+	}
 }
 
 #Preview {
-    ContentView()
+	ContentView()
 }
