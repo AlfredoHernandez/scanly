@@ -17,6 +17,10 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	/// Retained across stop/start so the ROI is re-applied on every
 	/// `start()` without requiring the view to re-publish a layout change.
 	private var lastLayerROI: CGRect?
+	/// Most recent metadata-space rect, read by in-flight ROI tasks so that
+	/// any burst of pushes collapses to "whoever runs last wins with the
+	/// latest value" regardless of Task scheduling order.
+	private var latestMetadataROI: CGRect?
 
 	init() {
 		let session = AVCaptureSession()
@@ -71,10 +75,16 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	private func pushRegionOfInterest() {
 		guard let layerRect = lastLayerROI else { return }
 		// Conversion returns `.null` until the preview layer is connected to
-		// a configured session; leave the rect stashed for the next push.
+		// a configured session. Dropping `.null` is safe because `start()`
+		// re-invokes this method after the session is configured, recovering
+		// the race where the first layout push beats session startup.
 		let metadataRect = previewLayer.metadataOutputRectConverted(fromLayerRect: layerRect)
 		guard !metadataRect.isNull else { return }
-		Task { [core] in await core.setRectOfInterest(metadataRect) }
+		latestMetadataROI = metadataRect
+		Task { [core, weak self] in
+			guard let rect = self?.latestMetadataROI else { return }
+			await core.setRectOfInterest(rect)
+		}
 	}
 
 	func setTorch(_ enabled: Bool) throws {
