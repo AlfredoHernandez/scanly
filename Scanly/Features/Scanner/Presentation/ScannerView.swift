@@ -7,12 +7,20 @@ import SwiftUI
 
 struct ScannerView: View {
 	@State private var viewModel: ScannerViewModel
+	@State private var focusIndicator: FocusIndicatorState?
+	@State private var focusIndicatorHideTask: Task<Void, Never>?
 	private let previewProvider: any CameraPreviewProviding
+	private let cameraControls: any CameraControlling
 	@Environment(\.scenePhase) private var scenePhase
 
-	init(viewModel: ScannerViewModel, previewProvider: any CameraPreviewProviding) {
+	init(
+		viewModel: ScannerViewModel,
+		previewProvider: any CameraPreviewProviding,
+		cameraControls: any CameraControlling,
+	) {
 		_viewModel = State(wrappedValue: viewModel)
 		self.previewProvider = previewProvider
+		self.cameraControls = cameraControls
 	}
 
 	var body: some View {
@@ -20,6 +28,19 @@ struct ScannerView: View {
 		ZStack {
 			CameraPreviewView(previewLayer: previewProvider.previewLayer)
 				.ignoresSafeArea()
+				.contentShape(.rect)
+				.onTapGesture(coordinateSpace: .local) { location in
+					cameraControls.focus(at: location)
+					showFocusIndicator(at: location)
+				}
+
+			if let focusIndicator {
+				FocusRing()
+					.position(focusIndicator.location)
+					.id(focusIndicator.id)
+					.transition(.opacity.combined(with: .scale(scale: 1.4)))
+					.allowsHitTesting(false)
+			}
 
 			overlay
 		}
@@ -96,8 +117,22 @@ struct ScannerView: View {
 			.onGeometryChange(for: CGRect.self) { proxy in
 				proxy.frame(in: .global)
 			} action: { rect in
-				viewModel.updateRegionOfInterest(rect)
+				cameraControls.setRegionOfInterest(rect)
 			}
+	}
+
+	private func showFocusIndicator(at location: CGPoint) {
+		focusIndicatorHideTask?.cancel()
+		withAnimation(.easeOut(duration: 0.2)) {
+			focusIndicator = FocusIndicatorState(location: location)
+		}
+		focusIndicatorHideTask = Task {
+			try? await Task.sleep(for: .milliseconds(800))
+			guard !Task.isCancelled else { return }
+			withAnimation(.easeIn(duration: 0.3)) {
+				focusIndicator = nil
+			}
+		}
 	}
 
 	private var torchBar: some View {
@@ -121,8 +156,22 @@ struct ScannerView: View {
 	}
 }
 
+private struct FocusIndicatorState: Equatable {
+	let id = UUID()
+	let location: CGPoint
+}
+
+private struct FocusRing: View {
+	var body: some View {
+		RoundedRectangle(cornerRadius: 8, style: .continuous)
+			.stroke(Color.yellow, lineWidth: 1.5)
+			.frame(width: 72, height: 72)
+			.shadow(color: .yellow.opacity(0.5), radius: 4)
+	}
+}
+
 @MainActor
-private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling {
+private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer = AVCaptureVideoPreviewLayer()
 	var onScan: ((String) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
@@ -134,6 +183,7 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	func stop() {}
 	func setTorch(_: Bool) throws {}
 	func setRegionOfInterest(_: CGRect) {}
+	func focus(at _: CGPoint) {}
 }
 
 #Preview {
@@ -141,5 +191,6 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	return ScannerView(
 		viewModel: ScannerViewModel(scanner: stub, torch: stub, clock: Date.init),
 		previewProvider: stub,
+		cameraControls: stub,
 	)
 }

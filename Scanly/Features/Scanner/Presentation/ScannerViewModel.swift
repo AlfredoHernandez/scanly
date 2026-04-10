@@ -112,10 +112,6 @@ final class ScannerViewModel {
 		scanner.stop()
 	}
 
-	func updateRegionOfInterest(_ layerRect: CGRect) {
-		scanner.setRegionOfInterest(layerRect)
-	}
-
 	func toggleTorch() {
 		let desired = !isTorchOn
 		do {

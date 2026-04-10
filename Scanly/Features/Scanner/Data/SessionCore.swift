@@ -79,6 +79,24 @@ actor SessionCore {
 		metadataOutput?.rectOfInterest = rect
 	}
 
+	func focus(at devicePoint: CGPoint) {
+		guard let device = AVCaptureDevice.default(for: .video) else { return }
+		do {
+			try device.lockForConfiguration()
+			defer { device.unlockForConfiguration() }
+			if device.isFocusPointOfInterestSupported, device.isFocusModeSupported(.autoFocus) {
+				device.focusPointOfInterest = devicePoint
+				device.focusMode = .autoFocus
+			}
+			if device.isExposurePointOfInterestSupported, device.isExposureModeSupported(.continuousAutoExposure) {
+				device.exposurePointOfInterest = devicePoint
+				device.exposureMode = .continuousAutoExposure
+			}
+		} catch {
+			Logger.scanner.error("Focus lock failed: \(error.localizedDescription, privacy: .public)")
+		}
+	}
+
 	func stop() {
 		desiredRunning = false
 		let wasRunning = session.isRunning

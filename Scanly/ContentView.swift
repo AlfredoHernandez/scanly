@@ -11,6 +11,7 @@ struct ContentView: View {
 		ScannerView(
 			viewModel: ScannerViewModel(scanner: scanner, torch: scanner, clock: Date.init),
 			previewProvider: scanner,
+			cameraControls: scanner,
 		)
 	}
 }

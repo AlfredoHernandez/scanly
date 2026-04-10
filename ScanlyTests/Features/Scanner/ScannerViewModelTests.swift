@@ -3,7 +3,6 @@
 //
 
 @testable import Scanly
-import CoreGraphics
 import Foundation
 import Testing
 
@@ -387,21 +386,6 @@ struct ScannerViewModelTests {
 		scanner.simulateDetectionChange(true)
 
 		#expect(sut.isDetectingCode == false)
-	}
-
-	// MARK: - Region of interest
-
-	@Test
-	func `updateRegionOfInterest forwards every rect regardless of VM state`() async {
-		let (sut, scanner, _) = makeSUT()
-		let rectBeforeStart = CGRect(x: 10, y: 20, width: 260, height: 260)
-		let rectAfterStart = CGRect(x: 30, y: 40, width: 200, height: 200)
-
-		sut.updateRegionOfInterest(rectBeforeStart)
-		await sut.start()
-		sut.updateRegionOfInterest(rectAfterStart)
-
-		#expect(scanner.regionOfInterestCalls == [rectBeforeStart, rectAfterStart])
 	}
 
 	// MARK: - Torch
