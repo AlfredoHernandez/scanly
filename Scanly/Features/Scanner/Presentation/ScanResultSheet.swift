@@ -74,6 +74,7 @@ struct ScanResultSheet: View {
 		result: ScanResult(
 			rawContent: "https://example.com/scanly",
 			type: .url(URL(string: "https://example.com/scanly")!),
+			format: .qr,
 			scannedAt: Date(timeIntervalSince1970: 1_744_156_800),
 		),
 	)

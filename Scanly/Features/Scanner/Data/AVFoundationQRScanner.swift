@@ -21,8 +21,10 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	/// any burst of pushes collapses to "whoever runs last wins with the
 	/// latest value" regardless of Task scheduling order.
 	private var latestMetadataROI: CGRect?
+	private var roiPushTask: Task<Void, Never>?
 	/// Same last-writer-wins pattern for focus point pushes.
 	private var latestFocusDevicePoint: CGPoint?
+	private var focusPushTask: Task<Void, Never>?
 
 	init() {
 		let session = AVCaptureSession()
@@ -83,7 +85,8 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 		let metadataRect = previewLayer.metadataOutputRectConverted(fromLayerRect: layerRect)
 		guard !metadataRect.isNull else { return }
 		latestMetadataROI = metadataRect
-		Task { [core, weak self] in
+		roiPushTask?.cancel()
+		roiPushTask = Task { [core, weak self] in
 			guard let rect = self?.latestMetadataROI else { return }
 			await core.setRectOfInterest(rect)
 		}
@@ -92,7 +95,8 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	func focus(at layerPoint: CGPoint) {
 		let devicePoint = previewLayer.captureDevicePointConverted(fromLayerPoint: layerPoint)
 		latestFocusDevicePoint = devicePoint
-		Task { [core, weak self] in
+		focusPushTask?.cancel()
+		focusPushTask = Task { [core, weak self] in
 			guard let point = self?.latestFocusDevicePoint else { return }
 			await core.focus(at: point)
 		}

@@ -46,7 +46,8 @@ final class ScannerViewModel {
 		self.haptics = haptics
 		self.parser = parser
 		self.clock = clock
-		// `[weak self]`: scanner outlives the VM via the composition root.
+		// `[weak self]` breaks the closure cycle: scanner holds the closure,
+		// the closure would otherwise hold self, and self holds the scanner.
 		self.scanner.onScan = { [weak self] raw, format in
 			self?.handleScan(raw, format: format)
 		}

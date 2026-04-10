@@ -173,6 +173,15 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
+	func `scan records the barcode format on the result`() async throws {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+		scanner.simulateScan("1234567890128", format: .ean13)
+		let result = try #require(sut.latestResult)
+		#expect(result.format == .ean13)
+	}
+
+	@Test
 	func `scan records scannedAt from the injected clock`() async throws {
 		let fixed = Date(timeIntervalSince1970: 1_234_567_890)
 		let (sut, scanner, _, _) = makeSUT(clock: { fixed })

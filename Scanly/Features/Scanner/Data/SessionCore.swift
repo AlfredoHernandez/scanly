@@ -43,6 +43,11 @@ actor SessionCore {
 	/// Retained across stop/start: writing `rectOfInterest` on it is a
 	/// no-op when the session isn't running but survives the next start.
 	private var metadataOutput: AVCaptureMetadataOutput?
+	/// The device bound to the session's input; used by `focus(at:)` so
+	/// focus/exposure are applied to the camera actually in use rather
+	/// than the global default (which may not match on dual/triple-camera
+	/// setups or front-camera configurations).
+	private var videoDevice: AVCaptureDevice?
 	private var desiredRectOfInterest: CGRect?
 
 	/// Idle gap after which a code is considered gone; spans ~7 frames at 30fps.
@@ -96,7 +101,7 @@ actor SessionCore {
 	}
 
 	func focus(at devicePoint: CGPoint) {
-		guard let device = AVCaptureDevice.default(for: .video) else { return }
+		guard let device = videoDevice else { return }
 		do {
 			try device.lockForConfiguration()
 			defer { device.unlockForConfiguration() }
@@ -122,6 +127,9 @@ actor SessionCore {
 		if detectionDebouncer.reset() {
 			eventContinuation.yield(.detectionChanged(false, epoch: currentEpoch))
 		}
+		// Bump the epoch so any events still queued from this session are
+		// dropped by the pump even if no subsequent `start()` ever runs.
+		epochStorage.withLock { $0 += 1 }
 		if wasRunning { Logger.scanner.info("Capture session stopped") }
 	}
 
@@ -155,6 +163,7 @@ actor SessionCore {
 			throw QRScannerError.cameraUnavailable
 		}
 		session.addInput(input)
+		videoDevice = device
 
 		let output = AVCaptureMetadataOutput()
 		guard session.canAddOutput(output) else {

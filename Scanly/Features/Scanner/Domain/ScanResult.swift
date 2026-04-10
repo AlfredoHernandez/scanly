@@ -15,7 +15,7 @@ nonisolated struct ScanResult: Equatable, Identifiable {
 		id: UUID = UUID(),
 		rawContent: String,
 		type: QRType,
-		format: BarcodeFormat = .qr,
+		format: BarcodeFormat,
 		scannedAt: Date = Date(),
 	) {
 		self.id = id

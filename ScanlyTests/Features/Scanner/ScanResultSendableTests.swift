@@ -9,7 +9,7 @@ import Testing
 struct ScanResultSendableTests {
 	@Test
 	func `ScanResult survives cross-actor hand-off`() async {
-		let original = ScanResult(rawContent: "hello", type: .text("hello"))
+		let original = ScanResult(rawContent: "hello", type: .text("hello"), format: .qr)
 
 		let echoed = await Task.detached { original }.value
 
