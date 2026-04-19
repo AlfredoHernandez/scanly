@@ -136,8 +136,20 @@ final class ScannerViewModel {
 		isDetectingCode = detecting
 	}
 
+	/// Commits a scan from any source (live camera or image decoder). Gated
+	/// only on `latestResult == nil` and non-empty content; callers with
+	/// stricter preconditions (e.g. live scanning must be in `.scanning`)
+	/// add their own guards before calling in.
+	func submit(content: String, format: BarcodeFormat) {
+		commit(content: content, format: format)
+	}
+
 	private func handleScan(_ raw: String, format: BarcodeFormat) {
 		guard case .scanning = state else { return }
+		commit(content: raw, format: format)
+	}
+
+	private func commit(content raw: String, format: BarcodeFormat) {
 		guard latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
@@ -149,10 +161,8 @@ final class ScannerViewModel {
 			format: format,
 			scannedAt: clock(),
 		)
-		// Fired here (not in the view) because the VM owns all four commit
-		// guards above and is the single source of truth for "a real scan
-		// just happened". Duplicating the predicate in the view via
-		// `.onChange(of: latestResult)` would re-derive the same decision.
+		// VM owns the commit guards, so the haptic fires here — single
+		// source of truth for "a real scan just happened."
 		haptics.playSuccess()
 		Logger.scanner
 			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")

@@ -17,6 +17,7 @@ struct ContentView: View {
 			),
 			previewProvider: scanner,
 			cameraControls: scanner,
+			imageDetector: VisionImageBarcodeDetector(),
 		)
 	}
 }

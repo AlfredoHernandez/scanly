@@ -299,6 +299,45 @@ struct ScannerViewModelTests {
 		#expect(sut.latestResult?.rawContent == "https://other.com")
 	}
 
+	// MARK: - Image submission
+
+	@Test
+	func `submit commits an external scan when idle`() {
+		let (sut, _, _, _) = makeSUT()
+		sut.submit(content: "https://example.com", format: .qr)
+		#expect(sut.latestResult?.rawContent == "https://example.com")
+		#expect(sut.latestResult?.format == .qr)
+	}
+
+	@Test
+	func `submit uses the provided format on the result`() {
+		let (sut, _, _, _) = makeSUT()
+		sut.submit(content: "1234567890128", format: .ean13)
+		#expect(sut.latestResult?.format == .ean13)
+	}
+
+	@Test
+	func `submit is ignored when a result is already pending`() {
+		let (sut, _, _, _) = makeSUT()
+		sut.submit(content: "https://first.com", format: .qr)
+		sut.submit(content: "https://second.com", format: .qr)
+		#expect(sut.latestResult?.rawContent == "https://first.com")
+	}
+
+	@Test
+	func `submit with empty content is ignored`() {
+		let (sut, _, _, _) = makeSUT()
+		sut.submit(content: "   \n\t  ", format: .qr)
+		#expect(sut.latestResult == nil)
+	}
+
+	@Test
+	func `submit plays haptic on committed result`() {
+		let (sut, _, _, haptics) = makeSUT()
+		sut.submit(content: "hello", format: .qr)
+		#expect(haptics.playSuccessCallCount == 1)
+	}
+
 	// MARK: - Haptic feedback
 
 	@Test

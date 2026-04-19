@@ -3,24 +3,30 @@
 //
 
 import AVFoundation
+import PhotosUI
 import SwiftUI
 
 struct ScannerView: View {
 	@State private var viewModel: ScannerViewModel
 	@State private var focusIndicator: FocusIndicatorState?
 	@State private var focusIndicatorHideTask: Task<Void, Never>?
+	@State private var photoPickerItem: PhotosPickerItem?
+	@State private var imageDetectionErrorMessage: String?
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
+	private let imageDetector: any ImageBarcodeDetecting
 	@Environment(\.scenePhase) private var scenePhase
 
 	init(
 		viewModel: ScannerViewModel,
 		previewProvider: any CameraPreviewProviding,
 		cameraControls: any CameraControlling,
+		imageDetector: any ImageBarcodeDetecting,
 	) {
 		_viewModel = State(wrappedValue: viewModel)
 		self.previewProvider = previewProvider
 		self.cameraControls = cameraControls
+		self.imageDetector = imageDetector
 	}
 
 	var body: some View {
@@ -63,6 +69,39 @@ struct ScannerView: View {
 			ScanResultSheet(result: result)
 				.presentationDetents([.height(220), .medium, .large])
 				.presentationBackground(.thinMaterial)
+		}
+		.onChange(of: photoPickerItem) { _, newItem in
+			guard let newItem else { return }
+			Task { await loadAndDetect(newItem) }
+		}
+		.alert(
+			"scanner.image.alert_title",
+			isPresented: Binding(
+				get: { imageDetectionErrorMessage != nil },
+				set: { if !$0 { imageDetectionErrorMessage = nil } },
+			),
+			presenting: imageDetectionErrorMessage,
+		) { _ in
+			Button("OK", role: .cancel) {}
+		} message: { message in
+			Text(message)
+		}
+	}
+
+	private func loadAndDetect(_ item: PhotosPickerItem) async {
+		defer { photoPickerItem = nil }
+		guard let data = try? await item.loadTransferable(type: Data.self) else {
+			imageDetectionErrorMessage = String(localized: "scanner.image.error")
+			return
+		}
+		do {
+			guard let decoded = try await imageDetector.detect(in: data) else {
+				imageDetectionErrorMessage = String(localized: "scanner.image.no_barcode")
+				return
+			}
+			viewModel.submit(content: decoded.content, format: decoded.format)
+		} catch {
+			imageDetectionErrorMessage = String(localized: "scanner.image.error")
 		}
 	}
 
@@ -152,6 +191,13 @@ struct ScannerView: View {
 				.accessibilityLabel(torchLabel)
 			}
 			Spacer()
+			PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
+				Image(systemName: "photo.on.rectangle.angled")
+					.font(.title2)
+					.frame(width: 56, height: 56)
+			}
+			.buttonStyle(.glass)
+			.accessibilityLabel("scanner.image.picker.a11y")
 		}
 	}
 }
@@ -187,6 +233,13 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 }
 
 @MainActor
+private final class PreviewImageDetector: ImageBarcodeDetecting {
+	func detect(in _: Data) async throws -> DetectedBarcode? {
+		nil
+	}
+}
+
+@MainActor
 private final class PreviewHapticFeedback: HapticFeedbackControlling {
 	func playSuccess() {}
 }
@@ -202,5 +255,6 @@ private final class PreviewHapticFeedback: HapticFeedbackControlling {
 		),
 		previewProvider: stub,
 		cameraControls: stub,
+		imageDetector: PreviewImageDetector(),
 	)
 }
