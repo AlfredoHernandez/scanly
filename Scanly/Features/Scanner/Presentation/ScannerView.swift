@@ -12,6 +12,10 @@ struct ScannerView: View {
 	@State private var focusIndicatorHideTask: Task<Void, Never>?
 	@State private var photoPickerItem: PhotosPickerItem?
 	@State private var imageDetectionErrorMessage: String?
+	@State private var zoomBaseline: CGFloat = 1
+	@State private var currentZoomFactor: CGFloat = 1
+	@State private var isZooming = false
+	@State private var zoomIndicatorHideTask: Task<Void, Never>?
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
@@ -39,6 +43,7 @@ struct ScannerView: View {
 					cameraControls.focus(at: location)
 					showFocusIndicator(at: location)
 				}
+				.simultaneousGesture(magnifyGesture)
 
 			if let focusIndicator {
 				FocusRing()
@@ -49,6 +54,14 @@ struct ScannerView: View {
 			}
 
 			overlay
+
+			if isZooming {
+				ZoomIndicator(factor: currentZoomFactor)
+					.padding(.top, 48)
+					.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+					.transition(.opacity)
+					.allowsHitTesting(false)
+			}
 		}
 		.task(id: scenePhase) {
 			switch scenePhase {
@@ -160,6 +173,37 @@ struct ScannerView: View {
 			}
 	}
 
+	private var magnifyGesture: some Gesture {
+		MagnifyGesture()
+			.onChanged { value in
+				let proposed = zoomBaseline * value.magnification
+				let clamped = min(max(proposed, cameraControls.minZoomFactor), cameraControls.maxZoomFactor)
+				currentZoomFactor = clamped
+				cameraControls.setZoomFactor(clamped)
+				showZoomIndicator()
+			}
+			.onEnded { _ in
+				zoomBaseline = currentZoomFactor
+				scheduleZoomIndicatorHide()
+			}
+	}
+
+	private func showZoomIndicator() {
+		zoomIndicatorHideTask?.cancel()
+		if !isZooming {
+			withAnimation(.easeOut(duration: 0.15)) { isZooming = true }
+		}
+	}
+
+	private func scheduleZoomIndicatorHide() {
+		zoomIndicatorHideTask?.cancel()
+		zoomIndicatorHideTask = Task {
+			try? await Task.sleep(for: .milliseconds(700))
+			guard !Task.isCancelled else { return }
+			withAnimation(.easeIn(duration: 0.25)) { isZooming = false }
+		}
+	}
+
 	private func showFocusIndicator(at location: CGPoint) {
 		focusIndicatorHideTask?.cancel()
 		withAnimation(.easeOut(duration: 0.2)) {
@@ -216,6 +260,19 @@ private struct FocusRing: View {
 	}
 }
 
+private struct ZoomIndicator: View {
+	let factor: CGFloat
+
+	var body: some View {
+		Text(String(format: "%.1fx", factor))
+			.font(.subheadline.weight(.semibold).monospacedDigit())
+			.foregroundStyle(.white)
+			.padding(.horizontal, 12)
+			.padding(.vertical, 6)
+			.background(.black.opacity(0.55), in: .capsule)
+	}
+}
+
 @MainActor
 private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer = AVCaptureVideoPreviewLayer()
@@ -225,11 +282,15 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 		true
 	}
 
+	let minZoomFactor: CGFloat = 1
+	let maxZoomFactor: CGFloat = 8
+
 	func start() async throws {}
 	func stop() {}
 	func setTorch(_: Bool) throws {}
 	func setRegionOfInterest(_: CGRect) {}
 	func focus(at _: CGPoint) {}
+	func setZoomFactor(_: CGFloat) {}
 }
 
 @MainActor

@@ -8,6 +8,8 @@
 final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer: AVCaptureVideoPreviewLayer
 	let isTorchAvailable: Bool
+	let minZoomFactor: CGFloat
+	let maxZoomFactor: CGFloat
 	var onScan: ((String, BarcodeFormat) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 
@@ -25,6 +27,14 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	/// Same last-writer-wins pattern for focus point pushes.
 	private var latestFocusDevicePoint: CGPoint?
 	private var focusPushTask: Task<Void, Never>?
+	/// Same last-writer-wins pattern for zoom pushes; a rapid pinch can
+	/// emit many updates per frame and we only care about the final one.
+	private var latestZoomFactor: CGFloat?
+	private var zoomPushTask: Task<Void, Never>?
+
+	/// Hard ceiling on zoom exposed to the UI. Devices report hardware
+	/// maximums in the 100s, but framing a barcode past this is unusable.
+	private static let uiMaxZoomFactor: CGFloat = 8
 
 	init() {
 		let session = AVCaptureSession()
@@ -32,9 +42,14 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 		let preview = AVCaptureVideoPreviewLayer(session: session)
 		preview.videoGravity = .resizeAspectFill
 		previewLayer = preview
-		// Torch availability is a device-fixed property; probe once at init
-		// instead of hitting AVFoundation on every SwiftUI re-render.
-		isTorchAvailable = AVCaptureDevice.default(for: .video)?.hasTorch ?? false
+		// Torch availability and zoom range are device-fixed properties;
+		// probe once at init instead of hitting AVFoundation on every
+		// SwiftUI re-render.
+		let device = AVCaptureDevice.default(for: .video)
+		isTorchAvailable = device?.hasTorch ?? false
+		minZoomFactor = device?.minAvailableVideoZoomFactor ?? 1
+		let deviceMax = device?.maxAvailableVideoZoomFactor ?? 1
+		maxZoomFactor = min(deviceMax, Self.uiMaxZoomFactor)
 		let core = SessionCore(session: session, queue: queue)
 		self.core = core
 		eventPump = Task { [weak self] in
@@ -99,6 +114,16 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 		focusPushTask = Task { [core, weak self] in
 			guard let point = self?.latestFocusDevicePoint else { return }
 			await core.focus(at: point)
+		}
+	}
+
+	func setZoomFactor(_ factor: CGFloat) {
+		let clamped = min(max(factor, minZoomFactor), maxZoomFactor)
+		latestZoomFactor = clamped
+		zoomPushTask?.cancel()
+		zoomPushTask = Task { [core, weak self] in
+			guard let value = self?.latestZoomFactor else { return }
+			await core.setZoomFactor(value)
 		}
 	}
 

@@ -100,6 +100,18 @@ actor SessionCore {
 		metadataOutput?.rectOfInterest = rect
 	}
 
+	func setZoomFactor(_ factor: CGFloat) {
+		guard let device = videoDevice else { return }
+		let clamped = min(max(factor, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
+		do {
+			try device.lockForConfiguration()
+			defer { device.unlockForConfiguration() }
+			device.videoZoomFactor = clamped
+		} catch {
+			Logger.scanner.error("Zoom lock failed: \(error.localizedDescription, privacy: .public)")
+		}
+	}
+
 	func focus(at devicePoint: CGPoint) {
 		guard let device = videoDevice else { return }
 		do {
