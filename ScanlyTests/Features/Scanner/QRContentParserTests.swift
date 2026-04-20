@@ -252,16 +252,29 @@ struct QRContentParserTests {
 		#expect(sut.parse("geo:-90,-180") == .location(latitude: -90, longitude: -180))
 	}
 
-	// MARK: - URL allowlist
+	// MARK: - Generic scheme URLs
 
 	@Test
-	func `ftp scheme falls through to .text (only http(s) is routed to .url)`() {
-		#expect(sut.parse("ftp://example.com/file") == .text("ftp://example.com/file"))
+	func `ftp scheme is recognized as .url`() throws {
+		let raw = "ftp://example.com/file"
+		#expect(try sut.parse(raw) == .url(#require(URL(string: raw))))
 	}
 
 	@Test
-	func `custom app scheme falls through to .text`() {
-		#expect(sut.parse("otpauth://totp/Issuer:acc?secret=X") == .text("otpauth://totp/Issuer:acc?secret=X"))
+	func `otpauth scheme is recognized as .url`() throws {
+		let raw = "otpauth://totp/Issuer:acc?secret=X"
+		#expect(try sut.parse(raw) == .url(#require(URL(string: raw))))
+	}
+
+	@Test
+	func `arbitrary custom app scheme is recognized as .url`() throws {
+		let raw = "myapp://open?target=home"
+		#expect(try sut.parse(raw) == .url(#require(URL(string: raw))))
+	}
+
+	@Test
+	func `string with a colon but no scheme does not become .url`() {
+		#expect(sut.parse("price: $10") == .text("price: $10"))
 	}
 
 	// MARK: - Fallback

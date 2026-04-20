@@ -17,8 +17,6 @@ nonisolated struct QRContentParser: QRContentParsing {
 		static let sms = "sms:"
 		static let mailto = "mailto:"
 		static let geo = "geo:"
-		static let http = "http://"
-		static let https = "https://"
 	}
 
 	func parse(_ content: String) -> QRType {
@@ -58,8 +56,12 @@ nonisolated struct QRContentParser: QRContentParsing {
 		{
 			return .location(latitude: location.latitude, longitude: location.longitude)
 		}
-		// Only `http(s)://` routes to `.url`; other schemes fall through to `.text`.
-		if lower.hasPrefix(LowercasedPrefix.http) || lower.hasPrefix(LowercasedPrefix.https),
+		// Any `scheme://...` reaches here and routes to `.url` — the
+		// specialized data-URI schemes (wifi:, tel:, mailto:, etc.) were
+		// already claimed above, so everything else is a real URL. The
+		// `://` requirement avoids matching plain text that happens to
+		// contain a colon (e.g. "price: $10").
+		if trimmed.firstMatch(of: /^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\/.+/) != nil,
 		   let url = URL(string: trimmed)
 		{
 			return .url(url)
