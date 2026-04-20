@@ -25,12 +25,32 @@ final class ControllableSleeper: Sleeper, @unchecked Sendable {
 		var waiters: [UUID: CheckedContinuation<Void, Error>]
 	}
 
-	/// Synchronously blocks until at least one waiter is registered, so
-	/// tests can deterministically release after triggering work that
-	/// schedules a sleep.
-	func waitForSleep(timeout: Duration = .seconds(1)) async throws {
+	/// Number of sleep calls currently parked. Reads are atomic; use
+	/// this to assert that cancellations have actually removed waiters
+	/// rather than just marked them cancelled.
+	var waiterCount: Int {
+		state.withLock { $0.waiters.count }
+	}
+
+	/// Synchronously blocks until `count` waiters are registered (default:
+	/// at least one), so tests can deterministically release after
+	/// triggering work that schedules a sleep.
+	func waitForSleep(count: Int = 1, timeout: Duration = .seconds(1)) async throws {
 		let deadline = ContinuousClock().now.advanced(by: timeout)
-		while state.withLock(\.waiters.isEmpty) {
+		while waiterCount < count {
+			if ContinuousClock().now >= deadline {
+				throw SleeperTimeout()
+			}
+			await Task.yield()
+		}
+	}
+
+	/// Spins until `waiterCount == expected` (typically used after a
+	/// cancellation to observe the `onCancel` handler completing and
+	/// the cancelled waiter being removed).
+	func waitForWaiterCount(_ expected: Int, timeout: Duration = .seconds(1)) async throws {
+		let deadline = ContinuousClock().now.advanced(by: timeout)
+		while waiterCount != expected {
 			if ContinuousClock().now >= deadline {
 				throw SleeperTimeout()
 			}

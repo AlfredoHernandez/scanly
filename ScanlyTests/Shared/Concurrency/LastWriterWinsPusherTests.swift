@@ -42,18 +42,17 @@ struct LastWriterWinsPusherTests {
 	}
 
 	@Test
-	func `push after deinit does nothing`() async {
+	func `push followed immediately by deinit suppresses delivery`() async {
 		let spy = SinkSpy<Int>()
 		var sut: LastWriterWinsPusher<Int>? = LastWriterWinsPusher(sink: spy.record)
 		sut?.push(7)
+		// On MainActor the scheduled task has not run yet; tearing down
+		// before it gets a turn should cancel it so the sink is never called.
 		sut = nil
-		// Give any in-flight work a turn; it should have been cancelled.
-		await Task.yield()
-		await Task.yield()
-		#expect(
-			spy.received.isEmpty || spy.received == [7],
-			"Pre-deinit values are allowed, but nothing new should appear afterwards",
-		)
+		for _ in 0 ..< 20 {
+			await Task.yield()
+		}
+		#expect(spy.received.isEmpty, "Deinit must cancel the pending task before it delivers")
 	}
 }
 

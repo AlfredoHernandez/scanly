@@ -68,4 +68,19 @@ struct URLBreakdownTests {
 		#expect(sut.host == "open")
 		#expect(sut.queryItems == [URLQueryItem(name: "target", value: "home")])
 	}
+
+	@Test
+	func `opaque URL without authority surfaces scheme and path`() throws {
+		// `mailto:` and similar opaque URIs have no `//` authority, so
+		// `URLComponents` reports no host and the addressee lands in `path`.
+		// Inspector users still benefit from seeing the parts laid out.
+		let url = try #require(URL(string: "mailto:user@example.com"))
+		let sut = URLBreakdown(url: url)
+		#expect(sut.scheme == "mailto")
+		#expect(sut.host == nil)
+		#expect(sut.port == nil)
+		#expect(sut.path == "user@example.com")
+		#expect(sut.queryItems.isEmpty)
+		#expect(sut.fragment == nil)
+	}
 }

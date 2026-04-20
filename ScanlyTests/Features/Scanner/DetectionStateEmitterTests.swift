@@ -27,41 +27,69 @@ struct DetectionStateEmitterTests {
 	}
 
 	@Test
-	func `second observation before timeout cancels the pending idle and keeps state true`() async {
+	func `second observation before timeout cancels the pending idle and keeps state true`() async throws {
 		let (sut, sleeper, recorder) = makeSUT()
 		await sut.noteObservation()
-		try? await sleeper.waitForSleep()
+		try await sleeper.waitForSleep()
 
 		await sut.noteObservation()
-		try? await sleeper.waitForSleep()
-
-		// Only the leading true has been emitted — the first idle was cancelled
-		// before it could fire, and the second timer is still parked.
+		// The first timer's `.cancel()` drives `ControllableSleeper.onCancel`,
+		// which removes the waiter. The second observation registers a fresh
+		// one, so exactly one waiter remains — observing this is the deterministic
+		// proof that the first idle was cancelled before it could fire.
+		try await sleeper.waitForWaiterCount(1)
 		#expect(recorder.changes == [true])
 	}
 
 	@Test
-	func `reset while detecting emits a trailing false and prevents further idle events`() async {
+	func `reset while detecting emits a trailing false and prevents further idle events`() async throws {
 		let (sut, sleeper, recorder) = makeSUT()
 		await sut.noteObservation()
-		try? await sleeper.waitForSleep()
+		try await sleeper.waitForSleep()
 
 		await sut.reset()
 		await recorder.waitForChangeCount(2)
 		#expect(recorder.changes == [true, false])
 
-		// Releasing the cancelled sleeper afterwards must not emit anything.
+		// Reset cancels the sleeper waiter via `.cancel()`, so the waiter
+		// count should already be zero. Releasing after that is a no-op.
+		try await sleeper.waitForWaiterCount(0)
 		sleeper.resumeAll()
-		try? await Task.sleep(for: .milliseconds(10))
+		try await Self.yieldMany()
 		#expect(recorder.changes == [true, false])
 	}
 
 	@Test
-	func `reset while not detecting is silent`() async {
+	func `reset while not detecting is silent`() async throws {
 		let (sut, _, recorder) = makeSUT()
 		await sut.reset()
-		try? await Task.sleep(for: .milliseconds(10))
+		try await Self.yieldMany()
 		#expect(recorder.changes.isEmpty)
+	}
+
+	@Test
+	func `observation after reset re-emits a fresh leading true`() async throws {
+		let (sut, sleeper, recorder) = makeSUT()
+		await sut.noteObservation()
+		try await sleeper.waitForSleep()
+		await sut.reset()
+		await recorder.waitForChangeCount(2)
+		#expect(recorder.changes == [true, false])
+
+		// A reset fully disarms the emitter; the next observation is a
+		// first-detection from the state machine's point of view.
+		await sut.noteObservation()
+		await recorder.waitForChangeCount(3)
+		#expect(recorder.changes == [true, false, true])
+	}
+
+	/// Pumps the cooperative scheduler enough times that any pending
+	/// actor-hop callback would have fired; used to assert *non-arrival*
+	/// of changes without a wall-clock sleep.
+	private static func yieldMany(iterations: Int = 20) async throws {
+		for _ in 0 ..< iterations {
+			await Task.yield()
+		}
 	}
 
 	// MARK: - Helpers

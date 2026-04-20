@@ -17,36 +17,17 @@ struct ScannerViewModelTests {
 		#expect(sut.state == .scanning)
 	}
 
-	@Test
-	func `start transitions to failed with camera unavailable message`() async {
+	@Test(arguments: [
+		QRScannerError.cameraUnavailable,
+		QRScannerError.permissionDenied,
+		QRScannerError.configurationFailed,
+		QRScannerError.torchUnavailable,
+	])
+	func `start transitions to failed with the error's localized message`(error: QRScannerError) async {
 		let (sut, scanner, _, _) = makeSUT()
-		scanner.startError = QRScannerError.cameraUnavailable
+		scanner.startError = error
 		await sut.start()
-		#expect(sut.state == .failed(message: String(localized: QRScannerError.cameraUnavailable.localizationKey)))
-	}
-
-	@Test
-	func `start transitions to failed with permission denied message`() async {
-		let (sut, scanner, _, _) = makeSUT()
-		scanner.startError = QRScannerError.permissionDenied
-		await sut.start()
-		#expect(sut.state == .failed(message: String(localized: QRScannerError.permissionDenied.localizationKey)))
-	}
-
-	@Test
-	func `start transitions to failed with configuration failed message`() async {
-		let (sut, scanner, _, _) = makeSUT()
-		scanner.startError = QRScannerError.configurationFailed
-		await sut.start()
-		#expect(sut.state == .failed(message: String(localized: QRScannerError.configurationFailed.localizationKey)))
-	}
-
-	@Test
-	func `start transitions to failed with torch unavailable message`() async {
-		let (sut, scanner, _, _) = makeSUT()
-		scanner.startError = QRScannerError.torchUnavailable
-		await sut.start()
-		#expect(sut.state == .failed(message: String(localized: QRScannerError.torchUnavailable.localizationKey)))
+		#expect(sut.state == .failed(message: String(localized: error.localizationKey)))
 	}
 
 	@Test
@@ -338,6 +319,18 @@ struct ScannerViewModelTests {
 		#expect(haptics.playSuccessCallCount == 1)
 	}
 
+	@Test
+	func `submit commits during .scanning without needing the camera path`() async {
+		let (sut, _, _, _) = makeSUT()
+		await sut.start()
+		#expect(sut.state == .scanning)
+
+		sut.submit(content: "https://from.image", format: .qr)
+
+		#expect(sut.latestResult?.rawContent == "https://from.image")
+		#expect(sut.state == .scanning, "submit must not change the camera state machine")
+	}
+
 	// MARK: - Haptic feedback
 
 	@Test
@@ -523,6 +516,29 @@ struct ScannerViewModelTests {
 		let (sut, _, torch, _) = makeSUT()
 		torch.isTorchAvailable = false
 		#expect(sut.isTorchAvailable == false)
+	}
+
+	@Test
+	func `toggleTorch works in .idle before any start`() {
+		let (sut, _, _, _) = makeSUT()
+		#expect(sut.state == .idle)
+		sut.toggleTorch()
+		#expect(sut.isTorchOn == true, "Torch is a device-level control and should not require an active session")
+	}
+
+	@Test
+	func `toggleTorch works in .failed state`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		scanner.startError = QRScannerError.cameraUnavailable
+		await sut.start()
+		guard case .failed = sut.state else {
+			Issue.record("Expected .failed, got \(sut.state)")
+			return
+		}
+
+		sut.toggleTorch()
+
+		#expect(sut.isTorchOn == true)
 	}
 
 	// MARK: - Helpers

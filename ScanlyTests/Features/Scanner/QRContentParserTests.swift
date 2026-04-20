@@ -30,9 +30,9 @@ struct QRContentParserTests {
 		#expect(sut.parse("tel:+14155551212") == .phone("+14155551212"))
 	}
 
-	@Test
-	func `parses TEL: case-insensitively`() {
-		#expect(sut.parse("TEL:5551212") == .phone("5551212"))
+	@Test(arguments: CaseInsensitiveFixture.allCases)
+	func `scheme prefixes are matched regardless of case`(fixture: CaseInsensitiveFixture) {
+		#expect(sut.parse(fixture.input) == fixture.expected)
 	}
 
 	@Test
@@ -41,30 +41,8 @@ struct QRContentParserTests {
 	}
 
 	@Test
-	func `parses MAILTO: case-insensitively`() {
-		let expected = EmailPayload(address: "user@example.com", subject: nil, body: nil)
-		#expect(sut.parse("MAILTO:user@example.com") == .email(expected))
-	}
-
-	@Test
-	func `parses GEO: case-insensitively`() {
-		#expect(sut.parse("GEO:37.7749,-122.4194") == .location(latitude: 37.7749, longitude: -122.4194))
-	}
-
-	@Test
-	func `parses SMS: case-insensitively`() {
-		#expect(sut.parse("SMS:+14155551212") == .sms(SMSPayload(number: "+14155551212", body: nil)))
-	}
-
-	@Test
 	func `rejects WIFI: without SSID`() {
 		#expect(sut.parse("WIFI:T:WPA;P:secret;;") == .text("WIFI:T:WPA;P:secret;;"))
-	}
-
-	@Test
-	func `parses wifi: lowercased`() {
-		let expected = WiFiCredentials(ssid: "Home", password: "pw", security: .wpa, isHidden: false)
-		#expect(sut.parse("wifi:T:WPA;S:Home;P:pw;;") == .wifi(expected))
 	}
 
 	// MARK: - SMS
@@ -287,5 +265,44 @@ struct QRContentParserTests {
 	@Test
 	func `trims surrounding whitespace before classifying`() throws {
 		#expect(try sut.parse("  https://example.com  ") == .url(#require(URL(string: "https://example.com"))))
+	}
+
+	/// Keeps the `@Test(arguments:)` list trivially `Sendable` without
+	/// relying on `QRType` auto-conforming to `Sendable`.
+	enum CaseInsensitiveFixture: String, CaseIterable {
+		case tel, mailto, geo, sms, wifi
+
+		var input: String {
+			switch self {
+			case .tel: "TEL:5551212"
+
+			case .mailto: "MAILTO:user@example.com"
+
+			case .geo: "GEO:37.7749,-122.4194"
+
+			case .sms: "SMS:+14155551212"
+
+			case .wifi: "WIFI:T:WPA;S:Home;P:pw;;"
+			}
+		}
+
+		var expected: QRType {
+			switch self {
+			case .tel:
+				.phone("5551212")
+
+			case .mailto:
+				.email(EmailPayload(address: "user@example.com", subject: nil, body: nil))
+
+			case .geo:
+				.location(latitude: 37.7749, longitude: -122.4194)
+
+			case .sms:
+				.sms(SMSPayload(number: "+14155551212", body: nil))
+
+			case .wifi:
+				.wifi(WiFiCredentials(ssid: "Home", password: "pw", security: .wpa, isHidden: false))
+			}
+		}
 	}
 }
