@@ -37,8 +37,7 @@ actor SessionCore {
 
 	private var isConfigured = false
 	private var desiredRunning = false
-	private var detectionDebouncer = DetectionDebouncer()
-	private var idleTimerTask: Task<Void, Never>?
+	private let detectionEmitter: DetectionStateEmitter
 	private var metadataDelegate: MetadataDelegate?
 	/// Retained across stop/start: writing `rectOfInterest` on it is a
 	/// no-op when the session isn't running but survives the next start.
@@ -69,13 +68,22 @@ actor SessionCore {
 		.upce,
 	]
 
-	init(session: AVCaptureSession, queue: DispatchSerialQueue) {
+	init(session: AVCaptureSession, queue: DispatchSerialQueue, sleeper: any Sleeper = TaskSleeper()) {
 		self.session = session
 		sessionQueue = queue
 		unownedExecutor = queue.asUnownedSerialExecutor()
 		let (stream, continuation) = AsyncStream.makeStream(of: Event.self)
 		events = stream
 		eventContinuation = continuation
+		let epochLock = epochStorage
+		detectionEmitter = DetectionStateEmitter(
+			idleTimeout: Self.detectionIdleTimeout,
+			sleeper: sleeper,
+			onChange: { detecting in
+				let epoch = epochLock.withLock { $0 }
+				continuation.yield(.detectionChanged(detecting, epoch: epoch))
+			},
+		)
 	}
 
 	deinit {
@@ -134,11 +142,7 @@ actor SessionCore {
 		desiredRunning = false
 		let wasRunning = session.isRunning
 		if wasRunning { session.stopRunning() }
-		idleTimerTask?.cancel()
-		idleTimerTask = nil
-		if detectionDebouncer.reset() {
-			eventContinuation.yield(.detectionChanged(false, epoch: currentEpoch))
-		}
+		Task { [detectionEmitter] in await detectionEmitter.reset() }
 		// Bump the epoch so any events still queued from this session are
 		// dropped by the pump even if no subsequent `start()` ever runs.
 		epochStorage.withLock { $0 += 1 }
@@ -201,21 +205,8 @@ actor SessionCore {
 
 	private func handleObservation(_ value: String, format: BarcodeFormat) {
 		let epoch = currentEpoch
-		idleTimerTask?.cancel()
-		if detectionDebouncer.noteObservation() {
-			eventContinuation.yield(.detectionChanged(true, epoch: epoch))
-		}
 		eventContinuation.yield(.scanned(value, format: format, epoch: epoch))
-		idleTimerTask = Task { [weak self] in
-			try? await Task.sleep(for: Self.detectionIdleTimeout)
-			guard !Task.isCancelled else { return }
-			await self?.handleIdleTimeout(epoch: epoch)
-		}
-	}
-
-	private func handleIdleTimeout(epoch: Int) {
-		guard detectionDebouncer.noteIdleTimeout() else { return }
-		eventContinuation.yield(.detectionChanged(false, epoch: epoch))
+		Task { [detectionEmitter] in await detectionEmitter.noteObservation() }
 	}
 }
 
