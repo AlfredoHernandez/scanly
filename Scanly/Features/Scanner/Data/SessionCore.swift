@@ -249,29 +249,3 @@ private final nonisolated class MetadataDelegate: NSObject, AVCaptureMetadataOut
 		}
 	}
 }
-
-private nonisolated extension AVMetadataObject.ObjectType {
-	var barcodeFormat: BarcodeFormat {
-		switch self {
-		case .qr: .qr
-
-		case .dataMatrix: .dataMatrix
-
-		case .pdf417: .pdf417
-
-		case .aztec: .aztec
-
-		case .code128: .code128
-
-		case .code39: .code39
-
-		case .ean13: .ean13
-
-		case .ean8: .ean8
-
-		case .upce: .upce
-
-		default: .other
-		}
-	}
-}
