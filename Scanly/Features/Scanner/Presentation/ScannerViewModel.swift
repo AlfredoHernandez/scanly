@@ -24,6 +24,7 @@ final class ScannerViewModel {
 
 	private let scanner: QRScanning
 	private let torch: TorchControlling
+	private let haptics: HapticFeedbackControlling
 	private let parser: QRContentParsing
 	private let clock: @Sendable () -> Date
 
@@ -36,16 +37,19 @@ final class ScannerViewModel {
 	init(
 		scanner: QRScanning,
 		torch: TorchControlling,
-		parser: QRContentParsing = QRContentParser(),
+		haptics: HapticFeedbackControlling,
 		clock: @escaping @Sendable () -> Date,
+		parser: QRContentParsing = QRContentParser(),
 	) {
 		self.scanner = scanner
 		self.torch = torch
+		self.haptics = haptics
 		self.parser = parser
 		self.clock = clock
-		// `[weak self]`: scanner outlives the VM via the composition root.
-		self.scanner.onScan = { [weak self] raw in
-			self?.handleScan(raw)
+		// `[weak self]` breaks the closure cycle: scanner holds the closure,
+		// the closure would otherwise hold self, and self holds the scanner.
+		self.scanner.onScan = { [weak self] raw, format in
+			self?.handleScan(raw, format: format)
 		}
 		self.scanner.onDetectionChange = { [weak self] detecting in
 			self?.handleDetectionChange(detecting)
@@ -132,14 +136,35 @@ final class ScannerViewModel {
 		isDetectingCode = detecting
 	}
 
-	private func handleScan(_ raw: String) {
+	/// Commits a scan from any source (live camera or image decoder). Gated
+	/// only on `latestResult == nil` and non-empty content; callers with
+	/// stricter preconditions (e.g. live scanning must be in `.scanning`)
+	/// add their own guards before calling in.
+	func submit(content: String, format: BarcodeFormat) {
+		commit(content: content, format: format)
+	}
+
+	private func handleScan(_ raw: String, format: BarcodeFormat) {
 		guard case .scanning = state else { return }
+		commit(content: raw, format: format)
+	}
+
+	private func commit(content raw: String, format: BarcodeFormat) {
 		guard latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
 
 		let type = parser.parse(content)
-		latestResult = ScanResult(rawContent: content, type: type, scannedAt: clock())
-		Logger.scanner.info("Scanned QR type=\(type.discriminator, privacy: .public) length=\(content.count, privacy: .public)")
+		latestResult = ScanResult(
+			rawContent: content,
+			type: type,
+			format: format,
+			scannedAt: clock(),
+		)
+		// VM owns the commit guards, so the haptic fires here — single
+		// source of truth for "a real scan just happened."
+		haptics.playSuccess()
+		Logger.scanner
+			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")
 	}
 }

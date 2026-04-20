@@ -6,7 +6,7 @@ import Foundation
 
 @MainActor
 protocol QRScanning: AnyObject {
-	var onScan: ((String) -> Void)? { get set }
+	var onScan: ((String, BarcodeFormat) -> Void)? { get set }
 	var onDetectionChange: ((Bool) -> Void)? { get set }
 	func start() async throws
 	func stop()

@@ -7,7 +7,7 @@ import Foundation
 
 @MainActor
 final class QRScannerSpy: QRScanning {
-	var onScan: ((String) -> Void)?
+	var onScan: ((String, BarcodeFormat) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 
 	private(set) var startCallCount = 0
@@ -42,8 +42,8 @@ final class QRScannerSpy: QRScanning {
 		await withCheckedContinuation { startEnteredWaiters.append($0) }
 	}
 
-	func simulateScan(_ raw: String) {
-		onScan?(raw)
+	func simulateScan(_ raw: String, format: BarcodeFormat = .qr) {
+		onScan?(raw, format)
 	}
 
 	func simulateDetectionChange(_ detecting: Bool) {

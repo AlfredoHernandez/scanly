@@ -8,17 +8,20 @@ nonisolated struct ScanResult: Equatable, Identifiable {
 	let id: UUID
 	let rawContent: String
 	let type: QRType
+	let format: BarcodeFormat
 	let scannedAt: Date
 
 	init(
 		id: UUID = UUID(),
 		rawContent: String,
 		type: QRType,
+		format: BarcodeFormat,
 		scannedAt: Date = Date(),
 	) {
 		self.id = id
 		self.rawContent = rawContent
 		self.type = type
+		self.format = format
 		self.scannedAt = scannedAt
 	}
 }
