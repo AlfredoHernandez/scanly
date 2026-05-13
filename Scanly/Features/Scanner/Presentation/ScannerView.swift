@@ -85,7 +85,7 @@ struct ScannerView: View {
 		}
 		.onChange(of: viewModel.latestResult) { oldValue, newValue in
 			guard oldValue != nil, newValue == nil else { return }
-			Task { await viewModel.handleResultDismissal() }
+			Task { await viewModel.didDismissResult() }
 		}
 		.onChange(of: photoPickerItem) { _, newItem in
 			guard let newItem else { return }

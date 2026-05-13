@@ -261,7 +261,7 @@ struct ScannerViewModelTests {
 		scanner.simulateScan("https://example.com")
 		let firstID = sut.latestResult?.id
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		scanner.simulateScan("https://example.com")
 
@@ -276,7 +276,7 @@ struct ScannerViewModelTests {
 
 		scanner.simulateScan("https://example.com")
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 		scanner.simulateScan("https://other.com")
 
 		#expect(sut.latestResult?.rawContent == "https://other.com")
@@ -593,24 +593,24 @@ struct ScannerViewModelTests {
 		#expect(scanner.stopCallCount == 1, "Session must pause even if the pre-pause torch-off call throws")
 	}
 
-	// MARK: - handleResultDismissal restores the session (§10.1.2)
+	// MARK: - didDismissResult restores the session (§10.1.2)
 
 	@Test
-	func `handleResultDismissal restarts the scanner`() async {
+	func `didDismissResult restarts the scanner`() async {
 		let (sut, scanner, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(scanner.startCallCount == 1)
 
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		#expect(scanner.startCallCount == 2, "Dismissal must re-enter the scanner so live detection resumes")
 		#expect(sut.state == .scanning)
 	}
 
 	@Test
-	func `handleResultDismissal restores torch when it was on before presentation`() async {
+	func `didDismissResult restores torch when it was on before presentation`() async {
 		let (sut, scanner, torch, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
@@ -618,52 +618,104 @@ struct ScannerViewModelTests {
 		#expect(sut.isTorchOn == false, "Torch is forced off while paused")
 
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == true, "Torch must be restored to its pre-presentation state")
 		#expect(torch.calls.last == true)
 	}
 
 	@Test
-	func `handleResultDismissal leaves torch off when it was off before presentation`() async {
+	func `didDismissResult leaves torch off when it was off before presentation`() async {
 		let (sut, scanner, torch, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		let priorCallCount = torch.calls.count
 
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == false)
 		#expect(torch.calls.count == priorCallCount, "Torch hardware must not be touched when the torch was off pre-pause")
 	}
 
 	@Test
-	func `handleResultDismissal is a no-op when the VM was not paused for a result`() async {
+	func `didDismissResult is a no-op when the VM was not paused for a result`() async {
 		let (sut, scanner, _, _) = makeSUT()
 		await sut.start()
 		let startCallsBefore = scanner.startCallCount
 
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		#expect(scanner.startCallCount == startCallsBefore, "Spurious dismissal must not retrigger the scanner")
 		#expect(sut.state == .scanning)
 	}
 
 	@Test
-	func `handleResultDismissal skips torch restoration when the restart fails`() async {
+	func `didDismissResult skips torch restoration when the restart fails`() async {
 		let (sut, scanner, torch, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
 		scanner.simulateScan("https://example.com")
-		let callsAfterPause = torch.calls
+		let callsAfterPause = torch.calls.count
 
 		scanner.startError = QRScannerError.cameraUnavailable
 		sut.latestResult = nil
-		await sut.handleResultDismissal()
+		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == false, "Torch must not be re-enabled when the restart failed")
-		#expect(torch.calls == callsAfterPause, "Torch hardware must not be re-enabled when the restart failed")
+		#expect(torch.calls.count == callsAfterPause, "Torch hardware must not be re-enabled when the restart failed")
+	}
+
+	@Test
+	func `external stop clears the pause flag so a later dismissal is a no-op`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		// Simulate scene phase backgrounding the app while the sheet is visible.
+		sut.stop()
+		let startCallsBefore = scanner.startCallCount
+
+		await sut.didDismissResult()
+
+		#expect(scanner.startCallCount == startCallsBefore, "Dismissal after an external stop must not retrigger the scanner")
+	}
+
+	@Test
+	func `commit from non-scanning state does not stop the scanner`() {
+		let (sut, scanner, _, _) = makeSUT()
+		// VM stays in .idle: image-picker path can submit before start().
+		sut.submit(content: "https://from.image", format: .qr)
+
+		#expect(sut.latestResult?.rawContent == "https://from.image")
+		#expect(scanner.stopCallCount == 0, "There is nothing to pause when the session is not scanning")
+	}
+
+	@Test
+	func `commit from non-scanning state leaves dismissal as no-op`() async {
+		let (sut, _, _, _) = makeSUT()
+		sut.submit(content: "https://from.image", format: .qr)
+		let stateBeforeDismiss = sut.state
+
+		await sut.didDismissResult()
+
+		#expect(sut.state == stateBeforeDismiss, "Dismissal must not start the scanner when commit never paused it")
+	}
+
+	@Test
+	func `didDismissResult during restart failure from image-picker path leaves VM in failed`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+		sut.submit(content: "https://from.image", format: .qr)
+
+		scanner.startError = QRScannerError.cameraUnavailable
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		guard case .failed = sut.state else {
+			Issue.record("Expected .failed after a restart that throws, got \(sut.state)")
+			return
+		}
+		#expect(sut.isTorchOn == false)
 	}
 
 	// MARK: - Helpers

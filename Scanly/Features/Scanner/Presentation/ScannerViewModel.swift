@@ -115,6 +115,13 @@ final class ScannerViewModel {
 			state = .idle
 		}
 		isDetectingCode = false
+		// Clearing the pause flags here makes external stops (scenePhase
+		// backgrounding, onDisappear) safe: any pending didDismissResult
+		// short-circuits instead of restarting a session the system just
+		// suspended. pauseSessionForResult re-sets the flags after this
+		// call so the result-presentation path is unaffected.
+		isPausedForResult = false
+		preservedTorchState = false
 		scanner.stop()
 	}
 
@@ -177,7 +184,7 @@ final class ScannerViewModel {
 	/// `latestResult: non-nil → nil` transition. Safe to call when no
 	/// presentation was active — it short-circuits without touching the
 	/// scanner.
-	func handleResultDismissal() async {
+	func didDismissResult() async {
 		guard isPausedForResult else { return }
 		isPausedForResult = false
 		let shouldRestoreTorch = preservedTorchState
@@ -191,21 +198,29 @@ final class ScannerViewModel {
 			isTorchOn = true
 			Logger.scanner.info("Torch restored after result dismissal")
 		} catch {
-			Logger.scanner.error("Torch restore failed: \(error.localizedDescription, privacy: .private)")
+			Logger.scanner.error("Torch restore failed: \(String(describing: error), privacy: .private)")
 		}
 	}
 
 	private func pauseSessionForResult() {
-		isPausedForResult = true
-		preservedTorchState = isTorchOn
-		if isTorchOn {
+		// Only an actively scanning session has anything to pause. From
+		// `.idle` / `.starting` / `.failed` (e.g. a submit() from the
+		// image-picker path before start()) the commit just shows the
+		// result without touching the scanner.
+		guard case .scanning = state else { return }
+		let wasTorchOn = isTorchOn
+		if wasTorchOn {
 			do {
 				try torch.setTorch(false)
 			} catch {
-				Logger.scanner.error("Torch off during pause failed: \(error.localizedDescription, privacy: .private)")
+				Logger.scanner.error("Torch off during pause failed: \(String(describing: error), privacy: .private)")
 			}
-			isTorchOn = false
 		}
+		// stop() clears the pause flags as part of its general external-stop
+		// contract; re-set them here so the post-pause invariant holds.
 		stop()
+		isTorchOn = false
+		preservedTorchState = wasTorchOn
+		isPausedForResult = true
 	}
 }
