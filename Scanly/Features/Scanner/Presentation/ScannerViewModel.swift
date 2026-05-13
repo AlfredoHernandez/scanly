@@ -38,6 +38,22 @@ final class ScannerViewModel {
 		torch.isTorchAvailable
 	}
 
+	/// Builds the view model with the dependencies its commit pipeline needs.
+	///
+	/// - Parameters:
+	///   - scanner: Live-camera scan source. The VM installs its own
+	///     `onScan` / `onDetectionChange` callbacks on the instance.
+	///   - torch: Hardware torch driver. The VM also persists/restores
+	///     torch state across the result-presentation pause cycle.
+	///   - haptics: Success-haptic feedback fired once per committed scan.
+	///   - clock: Time source for `ScanResult.scannedAt` and for the
+	///     post-dismiss cooldown's elapsed-time check.
+	///   - parser: QR content parser. Defaults to `QRContentParser()`.
+	///   - cooldownWindow: Duration in seconds during which a re-scan of
+	///     the just-dismissed `rawContent` is suppressed (§10.1.3).
+	///     Defaults to 2 seconds — long enough to absorb the user lifting
+	///     the camera away from a still-visible QR after dismissal, short
+	///     enough that intentional re-scans aren't blocked.
 	init(
 		scanner: QRScanning,
 		torch: TorchControlling,
@@ -112,12 +128,14 @@ final class ScannerViewModel {
 		}
 	}
 
-	/// Public stop. Halts the session **and** clears every pending
-	/// operation flag (pause-for-result, preserved torch state, queued
-	/// restart-after-stop, last-presented content), so external callers
-	/// (scenePhase backgrounding, `onDisappear`) never leave a deferred
-	/// action — including a stale cooldown record — armed against a
-	/// session the system just suspended.
+	/// Public stop. Clears every pending-operation flag — pause-for-result,
+	/// preserved torch state, queued restart-after-stop, last-presented
+	/// content — then delegates to `stopSession()` for the actual scanner
+	/// halt (which also resets `isDetectingCode` and transitions `state`).
+	/// External callers (scenePhase backgrounding, `onDisappear`) can
+	/// therefore call `stop()` knowing no deferred action — including a
+	/// stale cooldown record — survives against a session the system
+	/// just suspended.
 	func stop() {
 		isPausedForResult = false
 		preservedTorchState = false

@@ -18,6 +18,18 @@ nonisolated struct PostDismissCooldown {
 	private var lastDismissedContent: String?
 	private var lastDismissedAt: Date?
 
+	/// Creates a cooldown with the given suppression window and time source.
+	///
+	/// - Parameters:
+	///   - window: Length in seconds of the post-dismissal suppression
+	///     interval. Queries arriving strictly less than this many
+	///     seconds after `recordDismissal(of:)` are eligible for
+	///     suppression; at exactly `window` seconds the interval is
+	///     considered expired (half-open).
+	///   - clock: Time source used by `recordDismissal(of:)` to stamp
+	///     the dismissal and by `shouldSuppress(_:)` to measure elapsed
+	///     time. Tests inject a controllable clock; production passes
+	///     `Date.init` or a wrapped equivalent.
 	init(window: TimeInterval, clock: @escaping @Sendable () -> Date) {
 		self.window = window
 		self.clock = clock

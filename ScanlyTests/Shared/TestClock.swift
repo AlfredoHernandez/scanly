@@ -22,12 +22,19 @@ final class TestClock: @unchecked Sendable {
 		current = start
 	}
 
+	/// Returns the clock's current time. Pass `clock.now` (the unbound
+	/// method reference) as the `@Sendable () -> Date` argument that
+	/// production code accepts at initialization.
 	func now() -> Date {
 		lock.lock()
 		defer { lock.unlock() }
 		return current
 	}
 
+	/// Moves the clock forward (or backward, for negative values) by the
+	/// given number of seconds. Subsequent calls to `now()` reflect the
+	/// new time. Tests use this to step across timing thresholds (e.g.
+	/// the post-dismiss cooldown window).
 	func advance(by seconds: TimeInterval) {
 		lock.lock()
 		defer { lock.unlock() }

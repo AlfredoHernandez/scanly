@@ -789,7 +789,8 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `first scan after start is never suppressed by the cooldown`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 
 		scanner.simulateScan("https://example.com")
@@ -808,6 +809,9 @@ struct ScannerViewModelTests {
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		sut.stop()
+		// Simulate the view binding clearing latestResult, then calling the
+		// dismissal hook — the same two steps SwiftUI performs when the
+		// sheet binding goes nil and the .onChange handler fires.
 		sut.latestResult = nil
 		await sut.didDismissResult()
 
