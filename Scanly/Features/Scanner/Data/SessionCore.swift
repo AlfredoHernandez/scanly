@@ -10,7 +10,19 @@ import os
 /// callback can re-enter via `assumeIsolated` without hopping threads.
 actor SessionCore {
 	enum Event {
+		/// A QR was decoded from the live camera feed.
+		/// - Parameters:
+		///   - String: the decoded payload (`rawContent`).
+		///   - format: the source barcode format reported by AVFoundation.
+		///   - bounds: the QR's quadrilateral bounding box in
+		///     AVFoundation metadata-output coordinates (normalized
+		///     `[0, 1]`, origin top-left). Higher layers project to
+		///     view-layer coordinates via the preview layer.
+		///   - epoch: the session epoch the event was produced under;
+		///     used by the pump to drop events buffered against a
+		///     session that has since been stopped.
 		case scanned(String, format: BarcodeFormat, bounds: CGRect, epoch: Int)
+		/// The "QR is visible in frame" edge changed.
 		case detectionChanged(Bool, epoch: Int)
 
 		var epoch: Int {

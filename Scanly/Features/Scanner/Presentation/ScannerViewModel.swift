@@ -43,6 +43,13 @@ final class ScannerViewModel {
 	@ObservationIgnored private var lastPresentedContent: String?
 	@ObservationIgnored private var cooldown: PostDismissCooldown
 	@ObservationIgnored private var highlightClearTask: Task<Void, Never>?
+	/// Monotonic counter bumped on every highlight start and every
+	/// cancellation. The auto-clear Task captures the generation it was
+	/// spawned under; if the field has moved by the time the sleep
+	/// returns (because a newer commit replaced the highlight, or
+	/// `cancelDetectionHighlight()` invalidated it after the sleep
+	/// already resumed), the clear is skipped.
+	@ObservationIgnored private var highlightGeneration: UInt64 = 0
 
 	var isTorchAvailable: Bool {
 		torch.isTorchAvailable
@@ -241,23 +248,30 @@ final class ScannerViewModel {
 
 	private func showDetectionHighlight(bounds: CGRect) {
 		highlightClearTask?.cancel()
+		highlightGeneration &+= 1
+		let generation = highlightGeneration
 		lastDetectionBounds = bounds
 		// The Task inherits MainActor isolation from the enclosing
 		// method, so the body resumes on the main actor without an
-		// explicit hop.
-		highlightClearTask = Task { [weak self, sleeper, highlightDuration] in
+		// explicit hop. The generation guard handles the narrow window
+		// where `cancel()` arrives after `sleeper.sleep(for:)` has
+		// already resumed — the task otherwise continues past the
+		// `catch` and would erase bounds set by a newer commit.
+		highlightClearTask = Task { [weak self, sleeper, highlightDuration, generation] in
 			do {
 				try await sleeper.sleep(for: highlightDuration)
 			} catch {
-				return // cancelled — a newer highlight or stop() already cleared us.
+				return
 			}
-			self?.lastDetectionBounds = nil
+			guard let self, generation == highlightGeneration else { return }
+			lastDetectionBounds = nil
 		}
 	}
 
 	private func cancelDetectionHighlight() {
 		highlightClearTask?.cancel()
 		highlightClearTask = nil
+		highlightGeneration &+= 1
 		lastDetectionBounds = nil
 	}
 

@@ -155,23 +155,28 @@ struct ScannerView: View {
 		}
 	}
 
-	@ViewBuilder
 	private var detectionHighlight: some View {
-		if let bounds = viewModel.lastDetectionBounds {
-			// `lastDetectionBounds` is in AVFoundation metadata-output
-			// coords. Project to the preview layer's coord space, which
-			// matches this view's local space (the preview layer fills
-			// the ZStack).
-			let layerRect = previewProvider.previewLayer.layerRectConverted(fromMetadataOutputRect: bounds)
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.strokeBorder(Color.green, lineWidth: 4)
-				.frame(width: layerRect.width, height: layerRect.height)
-				.position(x: layerRect.midX, y: layerRect.midY)
-				.shadow(color: .green.opacity(0.6), radius: 8)
-				.transition(.opacity.combined(with: .scale(scale: 1.05)))
-				.allowsHitTesting(false)
-				.animation(.easeOut(duration: 0.15), value: viewModel.lastDetectionBounds)
+		Group {
+			if let bounds = viewModel.lastDetectionBounds {
+				// `lastDetectionBounds` is in AVFoundation metadata-output
+				// coords. Project to the preview layer's coord space, which
+				// matches this view's local space (the preview layer fills
+				// the ZStack).
+				let layerRect = previewProvider.previewLayer.layerRectConverted(fromMetadataOutputRect: bounds)
+				RoundedRectangle(cornerRadius: 12, style: .continuous)
+					.strokeBorder(Color.green, lineWidth: 4)
+					.frame(width: layerRect.width, height: layerRect.height)
+					.position(x: layerRect.midX, y: layerRect.midY)
+					.shadow(color: .green.opacity(0.6), radius: 8)
+					.transition(.opacity.combined(with: .scale(scale: 1.05)))
+					.allowsHitTesting(false)
+			}
 		}
+		// Animation lives on the parent so SwiftUI animates **both** the
+		// insertion (when bounds becomes non-nil) and the removal (when
+		// it goes back to nil). Putting `.animation(...)` inside the
+		// `if let` branch would only catch the insertion.
+		.animation(.easeOut(duration: 0.15), value: viewModel.lastDetectionBounds)
 	}
 
 	private var scanReticle: some View {

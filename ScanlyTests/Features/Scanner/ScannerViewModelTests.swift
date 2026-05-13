@@ -873,10 +873,33 @@ struct ScannerViewModelTests {
 
 		try await sleeper.waitForSleep()
 		sleeper.resumeAll()
-		await Task.yield()
-		await Task.yield()
+		// `resumeAll` schedules the auto-clear task to continue but does
+		// not block until it runs. Yield until the side effect lands or a
+		// generous retry budget is exhausted; 10 yields is far more than
+		// enough for a single MainActor-isolated task to be drained.
+		for _ in 0 ..< 10 where sut.lastDetectionBounds != nil {
+			await Task.yield()
+		}
 
 		#expect(sut.lastDetectionBounds == nil, "Bounds must clear automatically once the highlight duration elapses")
+	}
+
+	@Test
+	func `stop immediately after commit clears bounds synchronously`() async {
+		// Models a scenePhase background firing in the same runloop turn
+		// as the scan callback: the highlight task has been spawned but
+		// hasn't yet reached the sleeper. stop() must zero the bounds
+		// without waiting for the sleeper to be released.
+		let sleeper = ControllableSleeper()
+		let (sut, scanner, _, _) = makeSUT(sleeper: sleeper)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		#expect(sut.lastDetectionBounds != nil)
+
+		sut.stop()
+
+		#expect(sut.lastDetectionBounds == nil, "stop() must clear the highlight synchronously, before the sleeper ever resumes")
+		#expect(sleeper.waiterCount <= 1, "Cancellation is in flight; remaining waiter count must not grow")
 	}
 
 	@Test
@@ -908,19 +931,24 @@ struct ScannerViewModelTests {
 
 	private func makeSUT(
 		clock: @escaping @Sendable () -> Date = { Date(timeIntervalSince1970: 0) },
-		sleeper: Sleeper = TaskSleeper(),
+		sleeper: Sleeper? = nil,
 		cooldownWindow: TimeInterval = 2.0,
 		highlightDuration: Duration = .milliseconds(250),
 	) -> (sut: ScannerViewModel, scanner: QRScannerSpy, torch: TorchSpy, haptics: HapticFeedbackSpy) {
 		let scanner = QRScannerSpy()
 		let torch = TorchSpy()
 		let haptics = HapticFeedbackSpy()
+		// Default to a `ControllableSleeper` so commit-spawned highlight
+		// tasks never escape the test as live 250ms waits. Tests that
+		// observe the auto-clear pass their own sleeper and release it
+		// explicitly via `resumeAll()`.
+		let resolvedSleeper = sleeper ?? ControllableSleeper()
 		let sut = ScannerViewModel(
 			scanner: scanner,
 			torch: torch,
 			haptics: haptics,
 			clock: clock,
-			sleeper: sleeper,
+			sleeper: resolvedSleeper,
 			cooldownWindow: cooldownWindow,
 			highlightDuration: highlightDuration,
 		)
