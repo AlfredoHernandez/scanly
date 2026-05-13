@@ -253,34 +253,10 @@ struct ScannerViewModelTests {
 		#expect(sut.latestResult?.id == firstID, "Held-in-frame duplicates must not reset the pending result")
 	}
 
-	@Test
-	func `same QR is rescanned after dismissal restores the session`() async {
-		let (sut, scanner, _, _) = makeSUT()
-		await sut.start()
-
-		scanner.simulateScan("https://example.com")
-		let firstID = sut.latestResult?.id
-		sut.latestResult = nil
-		await sut.didDismissResult()
-
-		scanner.simulateScan("https://example.com")
-
-		#expect(sut.latestResult != nil)
-		#expect(sut.latestResult?.id != firstID, "A new ScanResult should be produced after dismissal")
-	}
-
-	@Test
-	func `different QR accepted after dismissal restores the session`() async {
-		let (sut, scanner, _, _) = makeSUT()
-		await sut.start()
-
-		scanner.simulateScan("https://example.com")
-		sut.latestResult = nil
-		await sut.didDismissResult()
-		scanner.simulateScan("https://other.com")
-
-		#expect(sut.latestResult?.rawContent == "https://other.com")
-	}
+	// Same-content and different-content rescan-after-dismissal are now
+	// covered explicitly by the post-dismiss cooldown tests in the
+	// `Post-dismiss cooldown (§10.1.3)` section below, with clock control
+	// to position the second scan inside or outside the window.
 
 	// MARK: - Image submission
 
@@ -725,6 +701,100 @@ struct ScannerViewModelTests {
 
 		#expect(scanner.startCallCount == 0, "Dismissal must not start a scanner that was never paused")
 		#expect(sut.state == .idle, "VM must stay idle when the image-picker submit never engaged the live session")
+	}
+
+	// MARK: - Post-dismiss cooldown (§10.1.3)
+
+	@Test
+	func `same content within the cooldown window is suppressed`() async {
+		let clock = TestClock()
+		let (sut, scanner, _, haptics) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		let priorStops = scanner.stopCallCount
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 1.0)
+		scanner.simulateScan("https://example.com")
+
+		#expect(sut.latestResult == nil, "Cooldown must drop the duplicate detection silently")
+		#expect(haptics.playSuccessCallCount == 1, "Suppressed scans must not play a second haptic")
+		#expect(scanner.stopCallCount == priorStops, "Suppressed scans must not re-pause the session")
+	}
+
+	@Test
+	func `different content within the cooldown window is accepted`() async {
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 1.0)
+		scanner.simulateScan("https://other.com")
+
+		#expect(sut.latestResult?.rawContent == "https://other.com")
+	}
+
+	@Test
+	func `same content after the cooldown window expires is accepted`() async {
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 2.5)
+		scanner.simulateScan("https://example.com")
+
+		#expect(sut.latestResult?.rawContent == "https://example.com")
+	}
+
+	@Test
+	func `cooldown applies to image-picker submissions too`() async {
+		// Per §10.1.3 the cooldown is keyed by rawContent regardless of source.
+		// Gallery scans of the same content within the window are also suppressed.
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 1.0)
+		sut.submit(content: "https://example.com", format: .qr)
+
+		#expect(sut.latestResult == nil, "Image-picker submissions of the just-dismissed content are suppressed too")
+	}
+
+	@Test
+	func `cooldown is recorded even when the session was never paused`() async {
+		// Image-picker submit from .idle does not engage pauseSessionForResult,
+		// but the dismissal must still record the cooldown so a subsequent
+		// duplicate scan is suppressed.
+		let clock = TestClock()
+		let (sut, _, _, _) = makeSUT(clock: clock.now)
+		sut.submit(content: "https://from.image", format: .qr)
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 1.0)
+		sut.submit(content: "https://from.image", format: .qr)
+
+		#expect(sut.latestResult == nil, "Cooldown must apply even when the originating commit never paused the session")
+	}
+
+	@Test
+	func `first scan after start is never suppressed by the cooldown`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+
+		scanner.simulateScan("https://example.com")
+
+		#expect(sut.latestResult?.rawContent == "https://example.com", "Initial cooldown state must allow everything through")
 	}
 
 	// MARK: - Helpers

@@ -31,6 +31,8 @@ final class ScannerViewModel {
 	private var restartRequestedAfterStop = false
 	private var isPausedForResult = false
 	private var preservedTorchState = false
+	private var lastPresentedContent: String?
+	private var cooldown: PostDismissCooldown
 
 	var isTorchAvailable: Bool {
 		torch.isTorchAvailable
@@ -42,12 +44,14 @@ final class ScannerViewModel {
 		haptics: HapticFeedbackControlling,
 		clock: @escaping @Sendable () -> Date,
 		parser: QRContentParsing = QRContentParser(),
+		cooldownWindow: TimeInterval = 2.0,
 	) {
 		self.scanner = scanner
 		self.torch = torch
 		self.haptics = haptics
 		self.parser = parser
 		self.clock = clock
+		cooldown = PostDismissCooldown(window: cooldownWindow, clock: clock)
 		// `[weak self]` breaks the closure cycle: scanner holds the closure,
 		// the closure would otherwise hold self, and self holds the scanner.
 		self.scanner.onScan = { [weak self] raw, format in
@@ -171,6 +175,7 @@ final class ScannerViewModel {
 		guard latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
+		guard !cooldown.shouldSuppress(content) else { return }
 
 		let type = parser.parse(content)
 		latestResult = ScanResult(
@@ -179,6 +184,7 @@ final class ScannerViewModel {
 			format: format,
 			scannedAt: clock(),
 		)
+		lastPresentedContent = content
 		// VM owns the commit guards, so the haptic fires here — single
 		// source of truth for "a real scan just happened."
 		haptics.playSuccess()
@@ -189,11 +195,17 @@ final class ScannerViewModel {
 	}
 
 	/// Resumes the camera session and restores the torch when the result
-	/// sheet has been dismissed. Called by the view on the
-	/// `latestResult: non-nil → nil` transition. Safe to call when no
-	/// presentation was active — it short-circuits without touching the
-	/// scanner.
+	/// sheet has been dismissed, and records the dismissed content into
+	/// the post-dismiss cooldown so subsequent detections of the same
+	/// payload are suppressed for the cooldown window (§10.1.3). Called
+	/// by the view on the `latestResult: non-nil → nil` transition.
+	/// Safe to call when nothing was presented — it short-circuits
+	/// without touching the scanner.
 	func didDismissResult() async {
+		if let content = lastPresentedContent {
+			cooldown.recordDismissal(of: content)
+			lastPresentedContent = nil
+		}
 		guard isPausedForResult else { return }
 		isPausedForResult = false
 		let shouldRestoreTorch = preservedTorchState
