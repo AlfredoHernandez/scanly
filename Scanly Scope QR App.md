@@ -668,7 +668,7 @@ To prevent scope creep and accidental permission requests, v1.0 explicitly does 
 
 **Info.plist hygiene.** No usage-description string is added to `Info.plist` for any row in the table above — including `NSUserTrackingUsageDescription` (the ATT-shaped string that App Tracking Transparency requires). ATT does follow the `*UsageDescription` naming pattern despite being a runtime API rather than a system-prompt permission, so it is included in this exclusion explicitly. Adding any of these strings later is a code-review-blocker that must be justified in the PR description.
 
-#### Implications for current code
+#### Implications for current code (Permissions)
 
 - **New views (Presentation):** `CameraPermissionPrimingView`, `CameraDeniedView`, `CameraRestrictedView`, all under `Scanly/Features/Scanner/Presentation/`. They share a base layout / shared private subview.
 - **`ScannerView`** branches at the top level between four states: `priming`, `preview`, `denied`, `restricted`. Today it shows the preview unconditionally; this branch lives in `ScannerViewModel` and the view picks the body via a `switch`.
@@ -679,7 +679,7 @@ To prevent scope creep and accidental permission requests, v1.0 explicitly does 
 - **No new entitlements are added by §10.6 specifically.** Camera and contacts entitlements are implicit via the Info.plist usage descriptions; no `Scanly.entitlements` change is required for this section. The Hotspot Configuration entitlement added by §10.3.5 is unrelated and stays.
 - **Tests** cover: priming view shown only when `.notDetermined`; `Continue` button calls `requestAccess` once and transitions on the result; denied/restricted views render the right copy and (for denied) wire the Open Settings button; `.scenePhase` change re-queries the monitor and swaps the view state when the underlying status changes; gallery picker remains reachable in all four states.
 
-#### Implications for current code
+#### Implications for current code (Observability)
 
 - **New folder:** `Scanly/Shared/Observability/`. Initial files:
   - `ErrorReporting.swift`, `AnalyticsTracking.swift`, `PerformanceTracking.swift` — the three protocols.
@@ -689,7 +689,7 @@ To prevent scope creep and accidental permission requests, v1.0 explicitly does 
   - `ObservabilityComposer.swift` — composition root, builds the three live implementations and the MetricKit subscriber.
   - `Environment+Observability.swift` — SwiftUI environment keys for `errorReporter`, `analytics`, `performance`.
 - **`Logger+Subsystems.swift`** gains `Logger.history`, `Logger.actions`, `Logger.observability` alongside the existing `Logger.scanner`. All four point to the same subsystem.
-- **`ScanlyApp.swift`** instantiates `ObservabilityComposer` at launch, injects the three protocols via `.environment(...)` on the root view, registers `MetricKitSubscriber` with `MXMetricManager.shared`, and observes `UIScene.didEnterBackgroundNotification` to call `flush()` on the error reporter and analytics tracker.
+- **`ScanlyApp.swift`** instantiates `ObservabilityComposer` at launch, injects the three protocols via `.environment(...)` on the root view, registers `MetricKitSubscriber` with `MXMetricManager.shared`, and uses `ScenePhase.onChange` on the root scene (as detailed in §10.5.1 above) to call `flush()` on the error reporter and analytics tracker when the phase transitions to `.background`. The handler stays inside the SwiftUI `App` body — no UIKit notification observation is registered at the composition site.
 - **Tests** override the environment keys with spies that record calls. Pattern mirrors `HapticFeedbackSpy`/`TorchSpy` already in `ScanlyTests/Features/Scanner/`. New spies live under `ScanlyTests/Shared/Observability/`.
 - **Typed errors** for Scanly features. The existing `QRScannerError` is the template; add `HistorySaveError`, `WiFiConnectError`, `VCardParseError`, etc., as their features land. `ErrorReporting.report(_:)` accepts these typed errors only — Foundation/UIKit errors are wrapped at the adapter boundary.
 - **Keychain storage** for the installation UUID (`UserContext.installationID`). A tiny `InstallationIDStore` protocol in `Shared/Observability/` keeps the Keychain dependency injectable for tests.

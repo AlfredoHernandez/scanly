@@ -113,7 +113,7 @@ Or from Xcode with `⌘U`.
 
 ## Project structure
 
-```
+```text
 Scanly/
 ├── Scanly/
 │   ├── ScanlyApp.swift
