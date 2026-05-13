@@ -83,6 +83,10 @@ struct ScannerView: View {
 				.presentationDetents([.height(220), .medium, .large])
 				.presentationBackground(.thinMaterial)
 		}
+		.onChange(of: viewModel.latestResult) { oldValue, newValue in
+			guard oldValue != nil, newValue == nil else { return }
+			Task { await viewModel.handleResultDismissal() }
+		}
 		.onChange(of: photoPickerItem) { _, newItem in
 			guard let newItem else { return }
 			Task { await loadAndDetect(newItem) }

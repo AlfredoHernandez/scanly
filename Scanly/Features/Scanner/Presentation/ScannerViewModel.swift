@@ -29,6 +29,8 @@ final class ScannerViewModel {
 	private let clock: @Sendable () -> Date
 
 	private var restartRequestedAfterStop = false
+	private var isPausedForResult = false
+	private var preservedTorchState = false
 
 	var isTorchAvailable: Bool {
 		torch.isTorchAvailable
@@ -166,5 +168,44 @@ final class ScannerViewModel {
 		haptics.playSuccess()
 		Logger.scanner
 			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")
+
+		pauseSessionForResult()
+	}
+
+	/// Resumes the camera session and restores the torch when the result
+	/// sheet has been dismissed. Called by the view on the
+	/// `latestResult: non-nil → nil` transition. Safe to call when no
+	/// presentation was active — it short-circuits without touching the
+	/// scanner.
+	func handleResultDismissal() async {
+		guard isPausedForResult else { return }
+		isPausedForResult = false
+		let shouldRestoreTorch = preservedTorchState
+		preservedTorchState = false
+
+		await start()
+
+		guard shouldRestoreTorch, case .scanning = state else { return }
+		do {
+			try torch.setTorch(true)
+			isTorchOn = true
+			Logger.scanner.info("Torch restored after result dismissal")
+		} catch {
+			Logger.scanner.error("Torch restore failed: \(error.localizedDescription, privacy: .private)")
+		}
+	}
+
+	private func pauseSessionForResult() {
+		isPausedForResult = true
+		preservedTorchState = isTorchOn
+		if isTorchOn {
+			do {
+				try torch.setTorch(false)
+			} catch {
+				Logger.scanner.error("Torch off during pause failed: \(error.localizedDescription, privacy: .private)")
+			}
+			isTorchOn = false
+		}
+		stop()
 	}
 }
