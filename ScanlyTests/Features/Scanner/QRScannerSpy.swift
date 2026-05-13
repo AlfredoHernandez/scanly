@@ -3,11 +3,18 @@
 //
 
 @testable import Scanly
+import CoreGraphics
 import Foundation
 
 @MainActor
 final class QRScannerSpy: QRScanning {
-	var onScan: ((String, BarcodeFormat) -> Void)?
+	/// Default normalized bounds used when callers don't pass an explicit
+	/// rect to `simulateScan(_:format:bounds:)`. Sits roughly centered in
+	/// metadata-output coordinates so view-side projection never trips on
+	/// `.zero`.
+	static let defaultBounds = CGRect(x: 0.3, y: 0.3, width: 0.4, height: 0.4)
+
+	var onScan: ((String, BarcodeFormat, CGRect) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 
 	private(set) var startCallCount = 0
@@ -42,8 +49,8 @@ final class QRScannerSpy: QRScanning {
 		await withCheckedContinuation { startEnteredWaiters.append($0) }
 	}
 
-	func simulateScan(_ raw: String, format: BarcodeFormat = .qr) {
-		onScan?(raw, format)
+	func simulateScan(_ raw: String, format: BarcodeFormat = .qr, bounds: CGRect = QRScannerSpy.defaultBounds) {
+		onScan?(raw, format, bounds)
 	}
 
 	func simulateDetectionChange(_ detecting: Bool) {

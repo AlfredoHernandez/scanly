@@ -21,18 +21,28 @@ final class ScannerViewModel {
 	var latestResult: ScanResult?
 	private(set) var isDetectingCode = false
 	var isTorchOn = false
+	/// Bounding box of the most recently committed live-camera scan, in
+	/// AVFoundation metadata-output coordinates. Set on commit and
+	/// auto-cleared after `highlightDuration` so the view can flash a
+	/// short overlay around the detected QR before the sheet covers it
+	/// (§10.1.4). `nil` for image-picker submissions, which have no
+	/// AVFoundation source to project from.
+	private(set) var lastDetectionBounds: CGRect?
 
 	private let scanner: QRScanning
 	private let torch: TorchControlling
 	private let haptics: HapticFeedbackControlling
 	private let parser: QRContentParsing
 	private let clock: @Sendable () -> Date
+	private let sleeper: Sleeper
+	private let highlightDuration: Duration
 
 	@ObservationIgnored private var restartRequestedAfterStop = false
 	@ObservationIgnored private var isPausedForResult = false
 	@ObservationIgnored private var preservedTorchState = false
 	@ObservationIgnored private var lastPresentedContent: String?
 	@ObservationIgnored private var cooldown: PostDismissCooldown
+	@ObservationIgnored private var highlightClearTask: Task<Void, Never>?
 
 	var isTorchAvailable: Bool {
 		torch.isTorchAvailable
@@ -49,29 +59,40 @@ final class ScannerViewModel {
 	///   - clock: Time source for `ScanResult.scannedAt` and for the
 	///     post-dismiss cooldown's elapsed-time check.
 	///   - parser: QR content parser. Defaults to `QRContentParser()`.
+	///   - sleeper: Time-suspension primitive used to auto-clear
+	///     `lastDetectionBounds` after `highlightDuration`. Tests inject a
+	///     `ControllableSleeper`; production uses `TaskSleeper()`.
 	///   - cooldownWindow: Duration in seconds during which a re-scan of
 	///     the just-dismissed `rawContent` is suppressed (§10.1.3).
 	///     Defaults to 2 seconds — long enough to absorb the user lifting
 	///     the camera away from a still-visible QR after dismissal, short
 	///     enough that intentional re-scans aren't blocked.
+	///   - highlightDuration: How long the detection-highlight bounding
+	///     box stays on screen after a live commit (§10.1.4). Defaults to
+	///     250 ms — brief enough to read as a flash, long enough to
+	///     register before the sheet covers the preview.
 	init(
 		scanner: QRScanning,
 		torch: TorchControlling,
 		haptics: HapticFeedbackControlling,
 		clock: @escaping @Sendable () -> Date,
 		parser: QRContentParsing = QRContentParser(),
+		sleeper: Sleeper = TaskSleeper(),
 		cooldownWindow: TimeInterval = 2.0,
+		highlightDuration: Duration = .milliseconds(250),
 	) {
 		self.scanner = scanner
 		self.torch = torch
 		self.haptics = haptics
 		self.parser = parser
 		self.clock = clock
+		self.sleeper = sleeper
+		self.highlightDuration = highlightDuration
 		cooldown = PostDismissCooldown(window: cooldownWindow, clock: clock)
 		// `[weak self]` breaks the closure cycle: scanner holds the closure,
 		// the closure would otherwise hold self, and self holds the scanner.
-		self.scanner.onScan = { [weak self] raw, format in
-			self?.handleScan(raw, format: format)
+		self.scanner.onScan = { [weak self] raw, format, bounds in
+			self?.handleScan(raw, format: format, bounds: bounds)
 		}
 		self.scanner.onDetectionChange = { [weak self] detecting in
 			self?.handleDetectionChange(detecting)
@@ -141,6 +162,7 @@ final class ScannerViewModel {
 		preservedTorchState = false
 		restartRequestedAfterStop = false
 		lastPresentedContent = nil
+		cancelDetectionHighlight()
 		stopSession()
 	}
 
@@ -183,15 +205,15 @@ final class ScannerViewModel {
 	/// stricter preconditions (e.g. live scanning must be in `.scanning`)
 	/// add their own guards before calling in.
 	func submit(content: String, format: BarcodeFormat) {
-		commit(content: content, format: format)
+		commit(content: content, format: format, bounds: nil)
 	}
 
-	private func handleScan(_ raw: String, format: BarcodeFormat) {
+	private func handleScan(_ raw: String, format: BarcodeFormat, bounds: CGRect) {
 		guard case .scanning = state else { return }
-		commit(content: raw, format: format)
+		commit(content: raw, format: format, bounds: bounds)
 	}
 
-	private func commit(content raw: String, format: BarcodeFormat) {
+	private func commit(content raw: String, format: BarcodeFormat, bounds: CGRect?) {
 		guard latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
@@ -205,6 +227,9 @@ final class ScannerViewModel {
 			scannedAt: clock(),
 		)
 		lastPresentedContent = content
+		if let bounds {
+			showDetectionHighlight(bounds: bounds)
+		}
 		// VM owns the commit guards, so the haptic fires here — single
 		// source of truth for "a real scan just happened."
 		haptics.playSuccess()
@@ -212,6 +237,28 @@ final class ScannerViewModel {
 			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")
 
 		pauseSessionForResult()
+	}
+
+	private func showDetectionHighlight(bounds: CGRect) {
+		highlightClearTask?.cancel()
+		lastDetectionBounds = bounds
+		// The Task inherits MainActor isolation from the enclosing
+		// method, so the body resumes on the main actor without an
+		// explicit hop.
+		highlightClearTask = Task { [weak self, sleeper, highlightDuration] in
+			do {
+				try await sleeper.sleep(for: highlightDuration)
+			} catch {
+				return // cancelled — a newer highlight or stop() already cleared us.
+			}
+			self?.lastDetectionBounds = nil
+		}
+	}
+
+	private func cancelDetectionHighlight() {
+		highlightClearTask?.cancel()
+		highlightClearTask = nil
+		lastDetectionBounds = nil
 	}
 
 	/// Reacts to the result sheet dismissal. The method performs two
@@ -235,6 +282,7 @@ final class ScannerViewModel {
 			cooldown.recordDismissal(of: content)
 			lastPresentedContent = nil
 		}
+		cancelDetectionHighlight()
 		guard isPausedForResult else { return }
 		isPausedForResult = false
 		let shouldRestoreTorch = preservedTorchState

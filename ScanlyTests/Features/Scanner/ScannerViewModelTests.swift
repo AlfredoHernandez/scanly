@@ -3,6 +3,7 @@
 //
 
 @testable import Scanly
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -822,11 +823,94 @@ struct ScannerViewModelTests {
 		#expect(sut.latestResult?.rawContent == "https://example.com", "After an explicit stop the cooldown must not block a fresh scan of the same content")
 	}
 
+	// MARK: - Visual detection highlight (§10.1.4)
+
+	@Test
+	func `commit captures the detection bounds from a live scan`() async {
+		let bounds = CGRect(x: 0.1, y: 0.2, width: 0.3, height: 0.4)
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+
+		scanner.simulateScan("https://example.com", bounds: bounds)
+
+		#expect(sut.lastDetectionBounds == bounds, "Bounds must surface to the view for highlight rendering")
+	}
+
+	@Test
+	func `image-picker submit leaves detection bounds nil`() async {
+		// Gallery scans have no AVFoundation metadata, so the highlight
+		// is intentionally skipped — there is nothing to draw over.
+		let (sut, _, _, _) = makeSUT()
+		await sut.start()
+
+		sut.submit(content: "https://from.image", format: .qr)
+
+		#expect(sut.lastDetectionBounds == nil, "submit() has no AVFoundation source and must not surface a stale bounds")
+	}
+
+	@Test
+	func `cooldown-suppressed scan does not update detection bounds`() async {
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com", bounds: CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2))
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		clock.advance(by: 1.0)
+		scanner.simulateScan("https://example.com", bounds: CGRect(x: 0.5, y: 0.5, width: 0.3, height: 0.3))
+
+		#expect(sut.lastDetectionBounds == nil, "A scan dropped by the cooldown must not refresh the highlight bounds")
+	}
+
+	@Test
+	func `detection bounds auto-clear after the highlight duration`() async throws {
+		let sleeper = ControllableSleeper()
+		let (sut, scanner, _, _) = makeSUT(sleeper: sleeper)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		#expect(sut.lastDetectionBounds != nil)
+
+		try await sleeper.waitForSleep()
+		sleeper.resumeAll()
+		await Task.yield()
+		await Task.yield()
+
+		#expect(sut.lastDetectionBounds == nil, "Bounds must clear automatically once the highlight duration elapses")
+	}
+
+	@Test
+	func `didDismissResult clears detection bounds`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		#expect(sut.lastDetectionBounds != nil)
+
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		#expect(sut.lastDetectionBounds == nil, "Dismissal must wipe the highlight so a re-presentation starts clean")
+	}
+
+	@Test
+	func `stop clears detection bounds`() async {
+		let (sut, scanner, _, _) = makeSUT()
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		#expect(sut.lastDetectionBounds != nil)
+
+		sut.stop()
+
+		#expect(sut.lastDetectionBounds == nil, "External stop must drop any in-flight highlight")
+	}
+
 	// MARK: - Helpers
 
 	private func makeSUT(
 		clock: @escaping @Sendable () -> Date = { Date(timeIntervalSince1970: 0) },
+		sleeper: Sleeper = TaskSleeper(),
 		cooldownWindow: TimeInterval = 2.0,
+		highlightDuration: Duration = .milliseconds(250),
 	) -> (sut: ScannerViewModel, scanner: QRScannerSpy, torch: TorchSpy, haptics: HapticFeedbackSpy) {
 		let scanner = QRScannerSpy()
 		let torch = TorchSpy()
@@ -836,7 +920,9 @@ struct ScannerViewModelTests {
 			torch: torch,
 			haptics: haptics,
 			clock: clock,
+			sleeper: sleeper,
 			cooldownWindow: cooldownWindow,
+			highlightDuration: highlightDuration,
 		)
 		return (sut, scanner, torch, haptics)
 	}

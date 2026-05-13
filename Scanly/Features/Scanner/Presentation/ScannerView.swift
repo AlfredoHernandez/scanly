@@ -53,6 +53,8 @@ struct ScannerView: View {
 					.allowsHitTesting(false)
 			}
 
+			detectionHighlight
+
 			overlay
 
 			if isZooming {
@@ -150,6 +152,25 @@ struct ScannerView: View {
 			.background(.regularMaterial, in: .rect(cornerRadius: 20))
 			.padding()
 			.foregroundStyle(.white)
+		}
+	}
+
+	@ViewBuilder
+	private var detectionHighlight: some View {
+		if let bounds = viewModel.lastDetectionBounds {
+			// `lastDetectionBounds` is in AVFoundation metadata-output
+			// coords. Project to the preview layer's coord space, which
+			// matches this view's local space (the preview layer fills
+			// the ZStack).
+			let layerRect = previewProvider.previewLayer.layerRectConverted(fromMetadataOutputRect: bounds)
+			RoundedRectangle(cornerRadius: 12, style: .continuous)
+				.strokeBorder(Color.green, lineWidth: 4)
+				.frame(width: layerRect.width, height: layerRect.height)
+				.position(x: layerRect.midX, y: layerRect.midY)
+				.shadow(color: .green.opacity(0.6), radius: 8)
+				.transition(.opacity.combined(with: .scale(scale: 1.05)))
+				.allowsHitTesting(false)
+				.animation(.easeOut(duration: 0.15), value: viewModel.lastDetectionBounds)
 		}
 	}
 
@@ -280,7 +301,7 @@ private struct ZoomIndicator: View {
 @MainActor
 private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer = AVCaptureVideoPreviewLayer()
-	var onScan: ((String, BarcodeFormat) -> Void)?
+	var onScan: ((String, BarcodeFormat, CGRect) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 	var isTorchAvailable: Bool {
 		true
