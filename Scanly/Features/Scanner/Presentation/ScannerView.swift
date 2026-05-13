@@ -323,8 +323,7 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	func setZoomFactor(_: CGFloat) {}
 }
 
-@MainActor
-private final class PreviewImageDetector: ImageBarcodeDetecting {
+private struct PreviewImageDetector: ImageBarcodeDetecting {
 	func detect(in _: Data) async throws -> DetectedBarcode? {
 		nil
 	}

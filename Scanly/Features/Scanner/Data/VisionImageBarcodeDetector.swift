@@ -5,16 +5,18 @@
 import Foundation
 import Vision
 
-struct VisionImageBarcodeDetector: ImageBarcodeDetecting {
+nonisolated struct VisionImageBarcodeDetector: ImageBarcodeDetecting {
+	@concurrent
 	func detect(in imageData: Data) async throws -> DetectedBarcode? {
-		try await Task.detached(priority: .userInitiated) {
-			let request = VNDetectBarcodesRequest()
-			let handler = VNImageRequestHandler(data: imageData, options: [:])
-			try handler.perform([request])
-			guard let first = request.results?.first,
-			      let payload = first.payloadStringValue
-			else { return nil }
-			return DetectedBarcode(content: payload, format: first.symbology.barcodeFormat)
-		}.value
+		// `@concurrent` already hops off the caller's actor; no explicit
+		// `Task.detached` needed. Vision's `perform` is synchronous and
+		// CPU-bound but runs here on a generic background executor.
+		let request = VNDetectBarcodesRequest()
+		let handler = VNImageRequestHandler(data: imageData, options: [:])
+		try handler.perform([request])
+		guard let first = request.results?.first,
+		      let payload = first.payloadStringValue
+		else { return nil }
+		return DetectedBarcode(content: payload, format: first.symbology.barcodeFormat)
 	}
 }

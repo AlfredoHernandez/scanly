@@ -11,11 +11,18 @@ protocol Sleeper: Sendable {
 	/// Suspends for `duration`. Throws `CancellationError` when the
 	/// enclosing task is cancelled — matches `Task.sleep(for:)`'s contract
 	/// so callers can swap implementations without changing control flow.
+	///
+	/// Marked `@concurrent` so the suspension always runs off the caller's
+	/// actor (typically `@MainActor`). Production callers therefore never
+	/// pin the main thread while waiting, and the protocol seam advertises
+	/// this guarantee to anyone writing a future conformer.
+	@concurrent
 	func sleep(for duration: Duration) async throws
 }
 
 /// Production `Sleeper` backed by `Task.sleep(for:)`.
-struct TaskSleeper: Sleeper {
+nonisolated struct TaskSleeper: Sleeper {
+	@concurrent
 	func sleep(for duration: Duration) async throws {
 		try await Task.sleep(for: duration)
 	}

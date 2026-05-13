@@ -2,6 +2,12 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+// `@preconcurrency` is required until AVFoundation completes its Swift 6
+// Sendable audit. The safety invariant that makes the suppression sound:
+// every `AVCaptureSession` / `AVCaptureDevice` / `AVCaptureMetadataOutput`
+// reference owned by this actor is confined to `sessionQueue` via the
+// `unownedExecutor` pin below, so no cross-thread access can occur. Drop
+// `@preconcurrency` once Apple annotates the imported types.
 @preconcurrency import AVFoundation
 import Foundation
 import os
@@ -154,7 +160,7 @@ actor SessionCore {
 		desiredRunning = false
 		let wasRunning = session.isRunning
 		if wasRunning { session.stopRunning() }
-		Task { [detectionEmitter] in await detectionEmitter.reset() }
+		Task { @concurrent [detectionEmitter] in await detectionEmitter.reset() }
 		// Bump the epoch so any events still queued from this session are
 		// dropped by the pump even if no subsequent `start()` ever runs.
 		epochStorage.withLock { $0 += 1 }
@@ -218,7 +224,7 @@ actor SessionCore {
 	private func handleObservation(_ value: String, format: BarcodeFormat, bounds: CGRect) {
 		let epoch = currentEpoch
 		eventContinuation.yield(.scanned(value, format: format, bounds: bounds, epoch: epoch))
-		Task { [detectionEmitter] in await detectionEmitter.noteObservation() }
+		Task { @concurrent [detectionEmitter] in await detectionEmitter.noteObservation() }
 	}
 }
 

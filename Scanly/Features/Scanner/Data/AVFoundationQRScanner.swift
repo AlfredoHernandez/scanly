@@ -2,6 +2,11 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+// `@preconcurrency` is required until AVFoundation completes its Swift 6
+// Sendable audit. Safety invariant: this class is `@MainActor`, so its
+// AVF references (`AVCaptureVideoPreviewLayer`, `AVCaptureDevice`) never
+// cross threads — and every mutating session operation is routed through
+// `SessionCore`, which pins its executor to a private serial queue.
 @preconcurrency import AVFoundation
 
 @MainActor
