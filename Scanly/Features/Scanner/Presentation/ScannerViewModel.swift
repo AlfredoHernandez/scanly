@@ -116,6 +116,14 @@ final class ScannerViewModel {
 	}
 
 	func start() async {
+		// Short-circuit while a result sheet is still presented. The
+		// `.task(id: scenePhase)` modifier in `ScannerView` re-fires
+		// `start()` whenever the app returns to `.active`; without this
+		// guard the capture session would resume *under* an open sheet,
+		// burning the camera and skipping the dismissal/cooldown cycle
+		// that owns the legitimate resume path. `didDismissResult()`
+		// brings the scanner back online once the user actually dismisses.
+		guard latestResult == nil else { return }
 		switch state {
 		case .starting, .scanning:
 			return
@@ -165,20 +173,27 @@ final class ScannerViewModel {
 		}
 	}
 
-	/// Public stop. Clears every pending-operation flag — pause-for-result,
-	/// preserved torch state, queued restart-after-stop, last-presented
-	/// content — then delegates to `stopSession()` for the actual scanner
-	/// halt (which also resets `isDetectingCode` and transitions `state`).
-	/// External callers (scenePhase backgrounding, `onDisappear`) can
-	/// therefore call `stop()` knowing no deferred action — including a
-	/// stale cooldown record — survives against a session the system
-	/// just suspended.
+	/// Public stop. Halts the underlying scanner and clears most pending
+	/// flags so external callers (scenePhase backgrounding, `onDisappear`)
+	/// don't carry stale state forward.
+	///
+	/// **Exception:** when a result sheet is still presented
+	/// (`latestResult != nil`), the pause-for-result intent is preserved
+	/// — `isPausedForResult`, `preservedTorchState`, and
+	/// `lastPresentedContent` survive. This matters because scenePhase
+	/// backgrounding fires `stop()` while the sheet is up; without the
+	/// preservation, the eventual dismissal in foreground would see a
+	/// cleared flag and leave the scanner dead instead of resuming.
+	/// `start()` ignores re-entries while a result is up, so the
+	/// scanner can only come back through the dismissal path.
 	func stop() {
-		isPausedForResult = false
-		preservedTorchState = false
 		restartRequestedAfterStop = false
-		lastPresentedContent = nil
 		cancelDetectionHighlight()
+		if latestResult == nil {
+			isPausedForResult = false
+			preservedTorchState = false
+			lastPresentedContent = nil
+		}
 		stopSession()
 	}
 

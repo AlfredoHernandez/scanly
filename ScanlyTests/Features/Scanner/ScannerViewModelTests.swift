@@ -644,18 +644,40 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
-	func `external stop clears the pause flag so a later dismissal is a no-op`() async {
+	func `stop while presenting a result preserves the pause flag so dismissal still restarts the scanner`() async {
+		// Models scenePhase backgrounding while the sheet is still up:
+		// `stop()` fires, but the dismissal that follows on foreground
+		// must own the resume path — otherwise the user returns to a
+		// dead scanner once they dismiss the sheet.
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		// Simulate scene phase backgrounding the app while the sheet is visible.
 		sut.stop()
 		let startCallsBefore = env.scanner.startCallCount
 
+		sut.latestResult = nil
 		await sut.didDismissResult()
 
-		#expect(env.scanner.startCallCount == startCallsBefore, "Dismissal after an external stop must not retrigger the scanner")
-		#expect(sut.state == .idle, "VM must stay idle after an external stop, not silently restart on dismissal")
+		#expect(env.scanner.startCallCount == startCallsBefore + 1, "Dismissal must restart the scanner after a backgrounded sheet")
+		#expect(sut.state == .scanning, "Dismissal owns the resume path; VM must end up scanning again")
+	}
+
+	@Test
+	func `start short-circuits while a result is being presented`() async {
+		// Models scenePhase returning to `.active` while the sheet is
+		// still on screen. `task(id: scenePhase)` re-fires `start()` on
+		// every transition; the VM must not run the camera under an
+		// open result sheet.
+		let (sut, env) = makeSUT()
+		await sut.start()
+		env.scanner.simulateScan("https://example.com")
+		#expect(sut.latestResult != nil)
+		let priorStarts = env.scanner.startCallCount
+
+		await sut.start()
+
+		#expect(env.scanner.startCallCount == priorStarts, "start() must not re-enter the scanner while a sheet is up")
+		#expect(sut.state == .idle, "VM stays paused while presenting a result")
 	}
 
 	@Test
@@ -800,27 +822,24 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
-	func `stop before dismissal clears the cooldown record so later scans are not suppressed`() async {
-		// Models scenePhase backgrounding while the sheet is still visible:
-		// stop() fires, the sheet dismisses, didDismissResult() runs — but
-		// the cooldown must not record the stale content from a session the
-		// system already suspended.
+	func `dismissal after backgrounding still records the cooldown so an immediate rescan is suppressed`() async {
+		// `stop()` while a sheet is up preserves the pause-for-result
+		// intent (so dismissal can resume scanning). The dismissal then
+		// records the cooldown like any other dismissal — per §10.1.3
+		// the window is anchored at the dismissal timestamp regardless
+		// of whether the session was suspended in between.
 		let clock = TestClock()
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
 		sut.stop()
-		// Simulate the view binding clearing latestResult, then calling the
-		// dismissal hook — the same two steps SwiftUI performs when the
-		// sheet binding goes nil and the .onChange handler fires.
 		sut.latestResult = nil
 		await sut.didDismissResult()
 
-		await sut.start()
 		clock.advance(by: 0.5)
 		env.scanner.simulateScan("https://example.com")
 
-		#expect(sut.latestResult?.rawContent == "https://example.com", "After an explicit stop the cooldown must not block a fresh scan of the same content")
+		#expect(sut.latestResult == nil, "Cooldown is anchored at dismissal time, not at the last live-running moment")
 	}
 
 	// MARK: - Visual detection highlight (§10.1.4)
