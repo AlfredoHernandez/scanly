@@ -108,20 +108,22 @@ final class ScannerViewModel {
 		}
 	}
 
-	/// Public stop. Halts the session **and** clears any
-	/// result-presentation pause flags, so external callers
-	/// (scenePhase backgrounding, `onDisappear`) never leave a pending
-	/// `didDismissResult()` armed against a session the system just
-	/// suspended.
+	/// Public stop. Halts the session **and** clears every pending
+	/// operation flag (pause-for-result, preserved torch state, queued
+	/// restart-after-stop), so external callers (scenePhase
+	/// backgrounding, `onDisappear`) never leave a deferred action
+	/// armed against a session the system just suspended.
 	func stop() {
 		isPausedForResult = false
 		preservedTorchState = false
+		restartRequestedAfterStop = false
 		stopSession()
 	}
 
-	/// Halts the underlying scanner without touching the pause flags.
-	/// Used by `pauseSessionForResult()` so the flags survive the stop
-	/// call that the pause itself triggers.
+	/// Halts the underlying scanner and transitions state to `.idle`
+	/// (or `.stoppingMidStart` if a start is in flight) **without**
+	/// modifying pending operation flags. Callers that need flags
+	/// cleared must do so themselves before calling this method.
 	private func stopSession() {
 		if case .starting = state {
 			state = .stoppingMidStart

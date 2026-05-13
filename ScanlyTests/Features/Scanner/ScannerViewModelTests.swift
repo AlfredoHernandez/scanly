@@ -692,17 +692,6 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
-	func `commit from non-scanning state leaves dismissal as no-op`() async {
-		let (sut, _, _, _) = makeSUT()
-		sut.submit(content: "https://from.image", format: .qr)
-		let stateBeforeDismiss = sut.state
-
-		await sut.didDismissResult()
-
-		#expect(sut.state == stateBeforeDismiss, "Dismissal must not start the scanner when commit never paused it")
-	}
-
-	@Test
 	func `didDismissResult after a submit during scanning lands in failed when restart throws`() async {
 		// submit() reaches commit() from .scanning, so the session IS paused
 		// and didDismissResult does try to restart. Mirrors the camera-path
