@@ -28,11 +28,11 @@ final class ScannerViewModel {
 	private let parser: QRContentParsing
 	private let clock: @Sendable () -> Date
 
-	private var restartRequestedAfterStop = false
-	private var isPausedForResult = false
-	private var preservedTorchState = false
-	private var lastPresentedContent: String?
-	private var cooldown: PostDismissCooldown
+	@ObservationIgnored private var restartRequestedAfterStop = false
+	@ObservationIgnored private var isPausedForResult = false
+	@ObservationIgnored private var preservedTorchState = false
+	@ObservationIgnored private var lastPresentedContent: String?
+	@ObservationIgnored private var cooldown: PostDismissCooldown
 
 	var isTorchAvailable: Bool {
 		torch.isTorchAvailable
@@ -114,13 +114,15 @@ final class ScannerViewModel {
 
 	/// Public stop. Halts the session **and** clears every pending
 	/// operation flag (pause-for-result, preserved torch state, queued
-	/// restart-after-stop), so external callers (scenePhase
-	/// backgrounding, `onDisappear`) never leave a deferred action
-	/// armed against a session the system just suspended.
+	/// restart-after-stop, last-presented content), so external callers
+	/// (scenePhase backgrounding, `onDisappear`) never leave a deferred
+	/// action — including a stale cooldown record — armed against a
+	/// session the system just suspended.
 	func stop() {
 		isPausedForResult = false
 		preservedTorchState = false
 		restartRequestedAfterStop = false
+		lastPresentedContent = nil
 		stopSession()
 	}
 
@@ -194,13 +196,22 @@ final class ScannerViewModel {
 		pauseSessionForResult()
 	}
 
-	/// Resumes the camera session and restores the torch when the result
-	/// sheet has been dismissed, and records the dismissed content into
-	/// the post-dismiss cooldown so subsequent detections of the same
-	/// payload are suppressed for the cooldown window (§10.1.3). Called
-	/// by the view on the `latestResult: non-nil → nil` transition.
-	/// Safe to call when nothing was presented — it short-circuits
-	/// without touching the scanner.
+	/// Reacts to the result sheet dismissal. The method performs two
+	/// independent legs:
+	///
+	/// 1. **Cooldown record** — if a commit set `lastPresentedContent`,
+	///    record the dismissal at the current clock time so subsequent
+	///    detections of the same payload are suppressed for the
+	///    cooldown window (§10.1.3). This leg runs even when the
+	///    session was never paused (image-picker submit from `.idle`).
+	/// 2. **Session restore** — if `pauseSessionForResult` armed the
+	///    pause flag, restart the scanner and restore the torch to its
+	///    pre-presentation state. Skipped when the pause was never
+	///    engaged.
+	///
+	/// Called by the view on the `latestResult: non-nil → nil`
+	/// transition. Spurious calls without a prior commit are safe:
+	/// both legs short-circuit when their respective state is unset.
 	func didDismissResult() async {
 		if let content = lastPresentedContent {
 			cooldown.recordDismissal(of: content)

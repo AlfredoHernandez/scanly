@@ -15,6 +15,9 @@ final class TestClock: @unchecked Sendable {
 	private let lock = NSLock()
 	private var current: Date
 
+	/// The non-epoch default (2023-11-14 UTC) keeps `advance(by: negative)`
+	/// safe from underflowing the Date range — convenient when tests want
+	/// to model a clock that was running before the test started.
 	init(start: Date = Date(timeIntervalSince1970: 1_700_000_000)) {
 		current = start
 	}

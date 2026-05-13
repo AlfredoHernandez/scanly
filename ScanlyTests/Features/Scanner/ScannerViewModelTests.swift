@@ -754,9 +754,9 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
-	func `cooldown applies to image-picker submissions too`() async {
+	func `submit is suppressed when same content was just live-scanned and cooldown is active`() async {
 		// Per §10.1.3 the cooldown is keyed by rawContent regardless of source.
-		// Gallery scans of the same content within the window are also suppressed.
+		// A gallery scan of the just-dismissed content is suppressed too.
 		let clock = TestClock()
 		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
@@ -797,10 +797,32 @@ struct ScannerViewModelTests {
 		#expect(sut.latestResult?.rawContent == "https://example.com", "Initial cooldown state must allow everything through")
 	}
 
+	@Test
+	func `stop before dismissal clears the cooldown record so later scans are not suppressed`() async {
+		// Models scenePhase backgrounding while the sheet is still visible:
+		// stop() fires, the sheet dismisses, didDismissResult() runs — but
+		// the cooldown must not record the stale content from a session the
+		// system already suspended.
+		let clock = TestClock()
+		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		sut.stop()
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		await sut.start()
+		clock.advance(by: 0.5)
+		scanner.simulateScan("https://example.com")
+
+		#expect(sut.latestResult?.rawContent == "https://example.com", "After an explicit stop the cooldown must not block a fresh scan of the same content")
+	}
+
 	// MARK: - Helpers
 
 	private func makeSUT(
 		clock: @escaping @Sendable () -> Date = { Date(timeIntervalSince1970: 0) },
+		cooldownWindow: TimeInterval = 2.0,
 	) -> (sut: ScannerViewModel, scanner: QRScannerSpy, torch: TorchSpy, haptics: HapticFeedbackSpy) {
 		let scanner = QRScannerSpy()
 		let torch = TorchSpy()
@@ -810,6 +832,7 @@ struct ScannerViewModelTests {
 			torch: torch,
 			haptics: haptics,
 			clock: clock,
+			cooldownWindow: cooldownWindow,
 		)
 		return (sut, scanner, torch, haptics)
 	}
