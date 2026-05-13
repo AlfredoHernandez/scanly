@@ -570,6 +570,45 @@ struct ScannerViewModelTests {
 		#expect(env.scanner.stopCallCount == 1, "Session must pause even if the pre-pause torch-off call throws")
 	}
 
+	@Test
+	func `commit keeps torch state in sync with hardware when the torch-off call fails`() async {
+		// `setTorch(false)` throwing means the hardware torch is still
+		// on. The VM must keep reporting `isTorchOn == true` so its
+		// observable state matches the hardware, instead of lying that
+		// the torch is off.
+		let (sut, env) = makeSUT()
+		await sut.start()
+		sut.toggleTorch()
+		#expect(sut.isTorchOn == true)
+		env.torch.torchError = QRScannerError.torchUnavailable
+
+		env.scanner.simulateScan("https://example.com")
+
+		#expect(sut.isTorchOn == true, "VM must mirror the still-on hardware when the disable call failed")
+	}
+
+	@Test
+	func `dismissal does not re-enable the torch when the pause-off call failed`() async {
+		// Pairs with the test above: because the pause-off failed, the
+		// hardware torch never turned off. Dismissal must not run a
+		// redundant `setTorch(true)` "restoration" — it would either
+		// be a no-op against already-on hardware or, worse, race with
+		// the user toggling the torch in the meantime.
+		let (sut, env) = makeSUT()
+		await sut.start()
+		sut.toggleTorch()
+		env.torch.torchError = QRScannerError.torchUnavailable
+		env.scanner.simulateScan("https://example.com")
+		let callsAfterPause = env.torch.calls.count
+
+		env.torch.torchError = nil
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		#expect(env.torch.calls.count == callsAfterPause, "Dismissal must not 'restore' a torch that never disabled")
+		#expect(sut.isTorchOn == true, "Torch state stays consistent with the unchanged hardware")
+	}
+
 	// MARK: - didDismissResult restores the session (§10.1.2)
 
 	@Test

@@ -347,17 +347,21 @@ final class ScannerViewModel {
 		// image-picker path before start()) the commit just shows the
 		// result without touching the scanner.
 		guard case .scanning = state else { return }
-		let wasTorchOn = isTorchOn
-		if wasTorchOn {
+		if isTorchOn {
 			do {
 				try torch.setTorch(false)
+				// Commit the torch transition only when the hardware
+				// actually obeyed: otherwise the VM keeps reporting the
+				// torch as on (which matches the still-on hardware), and
+				// dismissal won't try to "restore" a torch that never
+				// disabled.
+				isTorchOn = false
+				preservedTorchState = true
 			} catch {
 				Logger.scanner.error("Torch off during pause failed: \(String(describing: error), privacy: .private)")
 			}
 		}
 		stopSession()
-		isTorchOn = false
-		preservedTorchState = wasTorchOn
 		isPausedForResult = true
 	}
 }
