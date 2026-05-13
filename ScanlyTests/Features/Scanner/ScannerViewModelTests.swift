@@ -932,14 +932,9 @@ struct ScannerViewModelTests {
 		try await sleeper.waitForSleep()
 		sleeper.resumeAll()
 		// `resumeAll` schedules the auto-clear task to continue but does
-		// not block until it runs. Yield until the side effect lands or a
-		// generous retry budget is exhausted; 10 yields is far more than
-		// enough for a single MainActor-isolated task to be drained.
-		for _ in 0 ..< 10 where sut.lastDetectionBounds != nil {
-			await Task.yield()
-		}
-
-		#expect(sut.lastDetectionBounds == nil, "Bounds must clear automatically once the highlight duration elapses")
+		// not block until it runs. Yield against a deadline budget until
+		// the side effect lands; the throw on timeout is the assertion.
+		try await waitUntil { sut.lastDetectionBounds == nil }
 	}
 
 	@Test
