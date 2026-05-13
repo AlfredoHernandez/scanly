@@ -108,20 +108,27 @@ final class ScannerViewModel {
 		}
 	}
 
+	/// Public stop. Halts the session **and** clears any
+	/// result-presentation pause flags, so external callers
+	/// (scenePhase backgrounding, `onDisappear`) never leave a pending
+	/// `didDismissResult()` armed against a session the system just
+	/// suspended.
 	func stop() {
+		isPausedForResult = false
+		preservedTorchState = false
+		stopSession()
+	}
+
+	/// Halts the underlying scanner without touching the pause flags.
+	/// Used by `pauseSessionForResult()` so the flags survive the stop
+	/// call that the pause itself triggers.
+	private func stopSession() {
 		if case .starting = state {
 			state = .stoppingMidStart
 		} else {
 			state = .idle
 		}
 		isDetectingCode = false
-		// Clearing the pause flags here makes external stops (scenePhase
-		// backgrounding, onDisappear) safe: any pending didDismissResult
-		// short-circuits instead of restarting a session the system just
-		// suspended. pauseSessionForResult re-sets the flags after this
-		// call so the result-presentation path is unaffected.
-		isPausedForResult = false
-		preservedTorchState = false
 		scanner.stop()
 	}
 
@@ -216,9 +223,7 @@ final class ScannerViewModel {
 				Logger.scanner.error("Torch off during pause failed: \(String(describing: error), privacy: .private)")
 			}
 		}
-		// stop() clears the pause flags as part of its general external-stop
-		// contract; re-set them here so the post-pause invariant holds.
-		stop()
+		stopSession()
 		isTorchOn = false
 		preservedTorchState = wasTorchOn
 		isPausedForResult = true

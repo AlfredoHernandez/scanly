@@ -678,6 +678,7 @@ struct ScannerViewModelTests {
 		await sut.didDismissResult()
 
 		#expect(scanner.startCallCount == startCallsBefore, "Dismissal after an external stop must not retrigger the scanner")
+		#expect(sut.state == .idle, "VM must stay idle after an external stop, not silently restart on dismissal")
 	}
 
 	@Test
@@ -702,7 +703,10 @@ struct ScannerViewModelTests {
 	}
 
 	@Test
-	func `didDismissResult during restart failure from image-picker path leaves VM in failed`() async {
+	func `didDismissResult after a submit during scanning lands in failed when restart throws`() async {
+		// submit() reaches commit() from .scanning, so the session IS paused
+		// and didDismissResult does try to restart. Mirrors the camera-path
+		// "restart fails" test but the originating event was an image submit.
 		let (sut, scanner, _, _) = makeSUT()
 		await sut.start()
 		sut.submit(content: "https://from.image", format: .qr)
@@ -716,6 +720,22 @@ struct ScannerViewModelTests {
 			return
 		}
 		#expect(sut.isTorchOn == false)
+	}
+
+	@Test
+	func `didDismissResult after an image-picker submit from idle is a no-op`() async {
+		// True image-picker path: submit() fires from .idle (no prior start),
+		// so commit's pause guard early-returns and isPausedForResult stays
+		// false. The dismissal must not start the scanner.
+		let (sut, scanner, _, _) = makeSUT()
+		sut.submit(content: "https://from.image", format: .qr)
+		#expect(sut.state == .idle)
+
+		sut.latestResult = nil
+		await sut.didDismissResult()
+
+		#expect(scanner.startCallCount == 0, "Dismissal must not start a scanner that was never paused")
+		#expect(sut.state == .idle, "VM must stay idle when the image-picker submit never engaged the live session")
 	}
 
 	// MARK: - Helpers
