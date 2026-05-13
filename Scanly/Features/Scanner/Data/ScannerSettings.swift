@@ -13,16 +13,13 @@ import Foundation
 /// the underlying `UserDefaults`. Production code only reads.
 ///
 /// **Live-read contract:** every property getter resolves the *current*
-/// value at call time — implementations must not cache. The view model
-/// reads the preference inside `commit()` so a toggle from the settings
-/// UI takes effect on the very next scan without restarting the session.
+/// value at call time — implementations must not cache. Callers may read
+/// as frequently as needed and always observe settings changes made
+/// through the UI without requiring invalidation or session restart.
 @MainActor
 protocol ScannerSettingsReading: AnyObject {
 	/// Whether the confirmation sound plays on each accepted scan.
 	/// Defaults to `false` per §10.1.4 — opt-in only.
-	///
-	/// Read live on every commit: flipping the underlying preference is
-	/// observable on the next scan without any explicit invalidation.
 	var isDetectionSoundEnabled: Bool { get }
 }
 
