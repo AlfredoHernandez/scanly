@@ -32,6 +32,8 @@ final class ScannerViewModel {
 	private let scanner: QRScanning
 	private let torch: TorchControlling
 	private let haptics: HapticFeedbackControlling
+	private let sound: DetectionSoundPlaying
+	private let settings: ScannerSettingsReading
 	private let parser: QRContentParsing
 	private let clock: @Sendable () -> Date
 	private let sleeper: Sleeper
@@ -63,6 +65,9 @@ final class ScannerViewModel {
 	///   - torch: Hardware torch driver. The VM also persists/restores
 	///     torch state across the result-presentation pause cycle.
 	///   - haptics: Success-haptic feedback fired once per committed scan.
+	///   - sound: Optional confirmation-sound channel (§10.1.4). Only
+	///     plays when `settings.isDetectionSoundEnabled` is `true`.
+	///   - settings: Read-only access to scanner preferences.
 	///   - clock: Time source for `ScanResult.scannedAt` and for the
 	///     post-dismiss cooldown's elapsed-time check.
 	///   - parser: QR content parser. Defaults to `QRContentParser()`.
@@ -82,6 +87,8 @@ final class ScannerViewModel {
 		scanner: QRScanning,
 		torch: TorchControlling,
 		haptics: HapticFeedbackControlling,
+		sound: DetectionSoundPlaying,
+		settings: ScannerSettingsReading,
 		clock: @escaping @Sendable () -> Date,
 		parser: QRContentParsing = QRContentParser(),
 		sleeper: Sleeper = TaskSleeper(),
@@ -91,6 +98,8 @@ final class ScannerViewModel {
 		self.scanner = scanner
 		self.torch = torch
 		self.haptics = haptics
+		self.sound = sound
+		self.settings = settings
 		self.parser = parser
 		self.clock = clock
 		self.sleeper = sleeper
@@ -240,6 +249,9 @@ final class ScannerViewModel {
 		// VM owns the commit guards, so the haptic fires here — single
 		// source of truth for "a real scan just happened."
 		haptics.playSuccess()
+		if settings.isDetectionSoundEnabled {
+			sound.playDetectionSound()
+		}
 		Logger.scanner
 			.info("Scanned type=\(type.discriminator, privacy: .public) format=\(format.rawValue, privacy: .public) length=\(content.count, privacy: .public)")
 

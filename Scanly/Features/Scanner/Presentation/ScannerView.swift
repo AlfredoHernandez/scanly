@@ -335,6 +335,16 @@ private final class PreviewHapticFeedback: HapticFeedbackControlling {
 	func playSuccess() {}
 }
 
+@MainActor
+private final class PreviewDetectionSound: DetectionSoundPlaying {
+	func playDetectionSound() {}
+}
+
+@MainActor
+private final class PreviewScannerSettings: ScannerSettingsReading {
+	var isDetectionSoundEnabled = false
+}
+
 #Preview {
 	let stub = PreviewScannerStub()
 	return ScannerView(
@@ -342,6 +352,8 @@ private final class PreviewHapticFeedback: HapticFeedbackControlling {
 			scanner: stub,
 			torch: stub,
 			haptics: PreviewHapticFeedback(),
+			sound: PreviewDetectionSound(),
+			settings: PreviewScannerSettings(),
 			clock: Date.init,
 		),
 		previewProvider: stub,

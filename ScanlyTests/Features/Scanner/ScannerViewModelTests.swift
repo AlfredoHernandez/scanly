@@ -13,7 +13,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `start transitions to scanning on success`() async {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		await sut.start()
 		#expect(sut.state == .scanning)
 	}
@@ -25,7 +25,7 @@ struct ScannerViewModelTests {
 		QRScannerError.torchUnavailable,
 	])
 	func `start transitions to failed with the error's localized message`(error: QRScannerError) async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		scanner.startError = error
 		await sut.start()
 		#expect(sut.state == .failed(message: String(localized: error.localizationKey)))
@@ -33,14 +33,14 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `start forwards to scanner exactly once`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		#expect(scanner.startCallCount == 1)
 	}
 
 	@Test
 	func `start is a no-op when already scanning`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		await sut.start()
 		#expect(scanner.startCallCount == 1, "Second start() while already scanning should not re-enter the scanner")
@@ -48,7 +48,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `stop during in-flight start prevents VM from lying about scanning`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -64,7 +64,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `start requested during stoppingMidStart re-enters once idle`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -83,7 +83,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `stop during in-flight start that later throws lands in idle, not failed`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 		scanner.startError = QRScannerError.cameraUnavailable
@@ -100,7 +100,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `concurrent start() calls during the in-flight window forward exactly once`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -117,7 +117,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `start can recover after a previous failure`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
 		#expect(sut.state == .failed(message: String(localized: QRScannerError.cameraUnavailable.localizationKey)))
@@ -132,7 +132,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `stop forwards to scanner and resets state to idle`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		sut.stop()
 		#expect(sut.state == .idle)
@@ -143,7 +143,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `handling a scan produces a ScanResult with parsed type`() async throws {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		let result = try #require(sut.latestResult)
@@ -156,7 +156,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan records the barcode format on the result`() async throws {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("1234567890128", format: .ean13)
 		let result = try #require(sut.latestResult)
@@ -166,7 +166,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `scan records scannedAt from the injected clock`() async throws {
 		let fixed = Date(timeIntervalSince1970: 1_234_567_890)
-		let (sut, scanner, _, _) = makeSUT(clock: { fixed })
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: { fixed })
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		let result = try #require(sut.latestResult)
@@ -175,7 +175,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `empty payload is ignored`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("")
 		#expect(sut.latestResult == nil)
@@ -183,7 +183,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `whitespace-only payload is ignored`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("   \n\t  ")
 		#expect(sut.latestResult == nil)
@@ -191,7 +191,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan arriving after stop is ignored`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		sut.stop()
 		scanner.simulateScan("https://example.com")
@@ -200,7 +200,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan arriving during stoppingMidStart is ignored`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -217,7 +217,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `latestResult can be cleared by the view via the @Bindable setter`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("hello")
 		#expect(sut.latestResult != nil)
@@ -229,7 +229,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan is ignored while a result is pending`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		scanner.simulateScan("https://example.com")
@@ -242,7 +242,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `held-in-frame same QR is suppressed until dismissal`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		scanner.simulateScan("https://example.com")
@@ -263,7 +263,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `submit commits an external scan when idle`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		sut.submit(content: "https://example.com", format: .qr)
 		#expect(sut.latestResult?.rawContent == "https://example.com")
 		#expect(sut.latestResult?.format == .qr)
@@ -271,14 +271,14 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `submit uses the provided format on the result`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		sut.submit(content: "1234567890128", format: .ean13)
 		#expect(sut.latestResult?.format == .ean13)
 	}
 
 	@Test
 	func `submit is ignored when a result is already pending`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		sut.submit(content: "https://first.com", format: .qr)
 		sut.submit(content: "https://second.com", format: .qr)
 		#expect(sut.latestResult?.rawContent == "https://first.com")
@@ -286,21 +286,21 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `submit with empty content is ignored`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		sut.submit(content: "   \n\t  ", format: .qr)
 		#expect(sut.latestResult == nil)
 	}
 
 	@Test
 	func `submit plays haptic on committed result`() {
-		let (sut, _, _, haptics) = makeSUT()
+		let (sut, _, _, haptics, _, _) = makeSUT()
 		sut.submit(content: "hello", format: .qr)
 		#expect(haptics.playSuccessCallCount == 1)
 	}
 
 	@Test
 	func `submit commits during .scanning and pauses the session`() async {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		await sut.start()
 		#expect(sut.state == .scanning)
 
@@ -314,7 +314,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `successful scan plays haptic success feedback`() async {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(haptics.playSuccessCallCount == 1)
@@ -322,7 +322,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan blocked by empty payload does not play haptic`() async {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("")
 		#expect(haptics.playSuccessCallCount == 0)
@@ -330,7 +330,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan blocked by whitespace-only payload does not play haptic`() async {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("   \n\t  ")
 		#expect(haptics.playSuccessCallCount == 0)
@@ -338,14 +338,14 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan blocked while not scanning does not play haptic`() {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		scanner.simulateScan("https://example.com")
 		#expect(haptics.playSuccessCallCount == 0)
 	}
 
 	@Test
 	func `scan blocked by pending result does not re-play haptic`() async {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		scanner.simulateScan("https://other.com")
@@ -354,7 +354,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan in failed state does not play haptic`() async {
-		let (sut, scanner, _, haptics) = makeSUT()
+		let (sut, scanner, _, haptics, _, _) = makeSUT()
 		scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
 		scanner.simulateScan("https://example.com")
@@ -365,13 +365,13 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `isDetectingCode is false by default`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		#expect(sut.isDetectingCode == false)
 	}
 
 	@Test
 	func `detection change callback flips isDetectingCode while scanning`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		scanner.simulateDetectionChange(true)
@@ -383,7 +383,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection true is ignored when not scanning`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		sut.stop()
 
@@ -394,7 +394,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection false is always applied even outside scanning`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateDetectionChange(true)
 		#expect(sut.isDetectingCode == true)
@@ -407,7 +407,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `stop resets isDetectingCode`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateDetectionChange(true)
 
@@ -418,7 +418,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection true during starting is dropped`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -434,7 +434,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection false during starting is applied`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		let gate = OneShotMainActorGate()
 		scanner.startBlocker = { await gate.wait() }
 
@@ -450,7 +450,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection true after failed start is dropped`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
 
@@ -463,7 +463,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `toggleTorch flips isTorchOn on success`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		#expect(sut.isTorchOn == false)
 		sut.toggleTorch()
 		#expect(sut.isTorchOn == true)
@@ -473,7 +473,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `toggleTorch does not flip isTorchOn when torch throws on enable`() {
-		let (sut, _, torch, _) = makeSUT()
+		let (sut, _, torch, _, _, _) = makeSUT()
 		torch.torchError = QRScannerError.torchUnavailable
 		sut.toggleTorch()
 		#expect(sut.isTorchOn == false)
@@ -481,7 +481,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `toggleTorch does not flip isTorchOn when torch throws on disable`() {
-		let (sut, _, torch, _) = makeSUT()
+		let (sut, _, torch, _, _, _) = makeSUT()
 		sut.toggleTorch()
 		#expect(sut.isTorchOn == true)
 
@@ -492,14 +492,14 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `isTorchAvailable reflects torch dependency`() {
-		let (sut, _, torch, _) = makeSUT()
+		let (sut, _, torch, _, _, _) = makeSUT()
 		torch.isTorchAvailable = false
 		#expect(sut.isTorchAvailable == false)
 	}
 
 	@Test
 	func `toggleTorch works in .idle before any start`() {
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		#expect(sut.state == .idle)
 		sut.toggleTorch()
 		#expect(sut.isTorchOn == true, "Torch is a device-level control and should not require an active session")
@@ -507,7 +507,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `toggleTorch works in .failed state`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
 		guard case .failed = sut.state else {
@@ -524,7 +524,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `commit pauses the scanner so the session releases the camera`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		scanner.simulateScan("https://example.com")
@@ -535,7 +535,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `commit with torch off does not touch torch hardware`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		let priorCallCount = torch.calls.count
 
@@ -547,7 +547,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `commit with torch on turns torch off during pause`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
 		#expect(sut.isTorchOn == true)
@@ -560,7 +560,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `commit swallows torch-off failure so the session still pauses`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
 		torch.torchError = QRScannerError.torchUnavailable
@@ -574,7 +574,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult restarts the scanner`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(scanner.startCallCount == 1)
@@ -588,7 +588,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult restores torch when it was on before presentation`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
 		scanner.simulateScan("https://example.com")
@@ -603,7 +603,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult leaves torch off when it was off before presentation`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		let priorCallCount = torch.calls.count
@@ -617,7 +617,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult is a no-op when the VM was not paused for a result`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		let startCallsBefore = scanner.startCallCount
 
@@ -629,7 +629,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult skips torch restoration when the restart fails`() async {
-		let (sut, scanner, torch, _) = makeSUT()
+		let (sut, scanner, torch, _, _, _) = makeSUT()
 		await sut.start()
 		sut.toggleTorch()
 		scanner.simulateScan("https://example.com")
@@ -645,7 +645,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `external stop clears the pause flag so a later dismissal is a no-op`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		// Simulate scene phase backgrounding the app while the sheet is visible.
@@ -660,7 +660,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `commit from non-scanning state does not stop the scanner`() {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		// VM stays in .idle: image-picker path can submit before start().
 		sut.submit(content: "https://from.image", format: .qr)
 
@@ -673,7 +673,7 @@ struct ScannerViewModelTests {
 		// submit() reaches commit() from .scanning, so the session IS paused
 		// and didDismissResult does try to restart. Mirrors the camera-path
 		// "restart fails" test but the originating event was an image submit.
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		sut.submit(content: "https://from.image", format: .qr)
 
@@ -693,7 +693,7 @@ struct ScannerViewModelTests {
 		// True image-picker path: submit() fires from .idle (no prior start),
 		// so commit's pause guard early-returns and isPausedForResult stays
 		// false. The dismissal must not start the scanner.
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		sut.submit(content: "https://from.image", format: .qr)
 		#expect(sut.state == .idle)
 
@@ -709,7 +709,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `same content within the cooldown window is suppressed`() async {
 		let clock = TestClock()
-		let (sut, scanner, _, haptics) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, haptics, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		let priorStops = scanner.stopCallCount
@@ -727,7 +727,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `different content within the cooldown window is accepted`() async {
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		sut.latestResult = nil
@@ -742,7 +742,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `same content after the cooldown window expires is accepted`() async {
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		sut.latestResult = nil
@@ -759,7 +759,7 @@ struct ScannerViewModelTests {
 		// Per §10.1.3 the cooldown is keyed by rawContent regardless of source.
 		// A gallery scan of the just-dismissed content is suppressed too.
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		sut.latestResult = nil
@@ -777,7 +777,7 @@ struct ScannerViewModelTests {
 		// but the dismissal must still record the cooldown so a subsequent
 		// duplicate scan is suppressed.
 		let clock = TestClock()
-		let (sut, _, _, _) = makeSUT(clock: clock.now)
+		let (sut, _, _, _, _, _) = makeSUT(clock: clock.now)
 		sut.submit(content: "https://from.image", format: .qr)
 		sut.latestResult = nil
 		await sut.didDismissResult()
@@ -791,7 +791,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `first scan after start is never suppressed by the cooldown`() async {
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 
 		scanner.simulateScan("https://example.com")
@@ -806,7 +806,7 @@ struct ScannerViewModelTests {
 		// the cooldown must not record the stale content from a session the
 		// system already suspended.
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		sut.stop()
@@ -828,7 +828,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `commit captures the detection bounds from a live scan`() async {
 		let bounds = CGRect(x: 0.1, y: 0.2, width: 0.3, height: 0.4)
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		scanner.simulateScan("https://example.com", bounds: bounds)
@@ -840,7 +840,7 @@ struct ScannerViewModelTests {
 	func `image-picker submit leaves detection bounds nil`() async {
 		// Gallery scans have no AVFoundation metadata, so the highlight
 		// is intentionally skipped — there is nothing to draw over.
-		let (sut, _, _, _) = makeSUT()
+		let (sut, _, _, _, _, _) = makeSUT()
 		await sut.start()
 
 		sut.submit(content: "https://from.image", format: .qr)
@@ -851,7 +851,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `cooldown-suppressed scan does not update detection bounds`() async {
 		let clock = TestClock()
-		let (sut, scanner, _, _) = makeSUT(clock: clock.now)
+		let (sut, scanner, _, _, _, _) = makeSUT(clock: clock.now)
 		await sut.start()
 		scanner.simulateScan("https://example.com", bounds: CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2))
 		sut.latestResult = nil
@@ -866,7 +866,7 @@ struct ScannerViewModelTests {
 	@Test
 	func `detection bounds auto-clear after the highlight duration`() async throws {
 		let sleeper = ControllableSleeper()
-		let (sut, scanner, _, _) = makeSUT(sleeper: sleeper)
+		let (sut, scanner, _, _, _, _) = makeSUT(sleeper: sleeper)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(sut.lastDetectionBounds != nil)
@@ -891,7 +891,7 @@ struct ScannerViewModelTests {
 		// hasn't yet reached the sleeper. stop() must zero the bounds
 		// without waiting for the sleeper to be released.
 		let sleeper = ControllableSleeper()
-		let (sut, scanner, _, _) = makeSUT(sleeper: sleeper)
+		let (sut, scanner, _, _, _, _) = makeSUT(sleeper: sleeper)
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(sut.lastDetectionBounds != nil)
@@ -904,7 +904,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `didDismissResult clears detection bounds`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(sut.lastDetectionBounds != nil)
@@ -917,7 +917,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `stop clears detection bounds`() async {
-		let (sut, scanner, _, _) = makeSUT()
+		let (sut, scanner, _, _, _, _) = makeSUT()
 		await sut.start()
 		scanner.simulateScan("https://example.com")
 		#expect(sut.lastDetectionBounds != nil)
@@ -927,6 +927,80 @@ struct ScannerViewModelTests {
 		#expect(sut.lastDetectionBounds == nil, "External stop must drop any in-flight highlight")
 	}
 
+	// MARK: - Detection confirmation sound (§10.1.4)
+
+	@Test
+	func `detection sound plays on commit when the setting is enabled`() async {
+		let settings = ScannerSettingsStub(isDetectionSoundEnabled: true)
+		let (sut, scanner, _, _, sound, _) = makeSUT(settings: settings)
+		await sut.start()
+
+		scanner.simulateScan("https://example.com")
+
+		#expect(sound.playDetectionSoundCallCount == 1)
+	}
+
+	@Test
+	func `detection sound is silent when the setting is disabled`() async {
+		// Default settings: isDetectionSoundEnabled == false (opt-in per §10.1.4).
+		let (sut, scanner, _, _, sound, _) = makeSUT()
+		await sut.start()
+
+		scanner.simulateScan("https://example.com")
+
+		#expect(sound.playDetectionSoundCallCount == 0, "Sound is opt-in; default disabled state must produce silence")
+	}
+
+	@Test
+	func `image-picker submit plays sound when the setting is enabled`() async {
+		let settings = ScannerSettingsStub(isDetectionSoundEnabled: true)
+		let (sut, _, _, _, sound, _) = makeSUT(settings: settings)
+		await sut.start()
+
+		sut.submit(content: "https://from.image", format: .qr)
+
+		#expect(sound.playDetectionSoundCallCount == 1, "Gallery scans are full scan events too — they fire the sound when enabled")
+	}
+
+	@Test
+	func `cooldown-suppressed scan does not play sound`() async {
+		let clock = TestClock()
+		let settings = ScannerSettingsStub(isDetectionSoundEnabled: true)
+		let (sut, scanner, _, _, sound, _) = makeSUT(clock: clock.now, settings: settings)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		sut.latestResult = nil
+		await sut.didDismissResult()
+		let priorCount = sound.playDetectionSoundCallCount
+
+		clock.advance(by: 1.0)
+		scanner.simulateScan("https://example.com")
+
+		#expect(sound.playDetectionSoundCallCount == priorCount, "Suppressed re-scans must not fire feedback")
+	}
+
+	@Test
+	func `empty payload does not play sound even when enabled`() async {
+		let settings = ScannerSettingsStub(isDetectionSoundEnabled: true)
+		let (sut, scanner, _, _, sound, _) = makeSUT(settings: settings)
+		await sut.start()
+
+		scanner.simulateScan("")
+
+		#expect(sound.playDetectionSoundCallCount == 0)
+	}
+
+	@Test
+	func `scan while a result is pending does not play sound twice`() async {
+		let settings = ScannerSettingsStub(isDetectionSoundEnabled: true)
+		let (sut, scanner, _, _, sound, _) = makeSUT(settings: settings)
+		await sut.start()
+		scanner.simulateScan("https://example.com")
+		scanner.simulateScan("https://other.com")
+
+		#expect(sound.playDetectionSoundCallCount == 1, "Second scan blocked by latestResult guard must not re-play sound")
+	}
+
 	// MARK: - Helpers
 
 	private func makeSUT(
@@ -934,10 +1008,19 @@ struct ScannerViewModelTests {
 		sleeper: Sleeper? = nil,
 		cooldownWindow: TimeInterval = 2.0,
 		highlightDuration: Duration = .milliseconds(250),
-	) -> (sut: ScannerViewModel, scanner: QRScannerSpy, torch: TorchSpy, haptics: HapticFeedbackSpy) {
+		settings: ScannerSettingsStub = ScannerSettingsStub(),
+	) -> (
+		sut: ScannerViewModel,
+		scanner: QRScannerSpy,
+		torch: TorchSpy,
+		haptics: HapticFeedbackSpy,
+		sound: DetectionSoundPlayingSpy,
+		settings: ScannerSettingsStub,
+	) {
 		let scanner = QRScannerSpy()
 		let torch = TorchSpy()
 		let haptics = HapticFeedbackSpy()
+		let sound = DetectionSoundPlayingSpy()
 		// Default to a `ControllableSleeper` so commit-spawned highlight
 		// tasks never escape the test as live 250ms waits. Tests that
 		// observe the auto-clear pass their own sleeper and release it
@@ -947,12 +1030,14 @@ struct ScannerViewModelTests {
 			scanner: scanner,
 			torch: torch,
 			haptics: haptics,
+			sound: sound,
+			settings: settings,
 			clock: clock,
 			sleeper: resolvedSleeper,
 			cooldownWindow: cooldownWindow,
 			highlightDuration: highlightDuration,
 		)
-		return (sut, scanner, torch, haptics)
+		return (sut, scanner, torch, haptics, sound, settings)
 	}
 }
 
