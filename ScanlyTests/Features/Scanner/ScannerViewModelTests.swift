@@ -1081,8 +1081,7 @@ struct ScannerViewModelTests {
 		let torch = TorchSpy()
 		let haptics = HapticFeedbackSpy()
 		let sound = DetectionSoundPlayingSpy()
-		let repository = InMemoryScanHistoryRepository()
-		let coordinator = ScanResultCoordinator(repository: repository)
+		let coordinator = ScanResultCoordinator(repository: InMemoryScanHistoryRepository())
 		// Default to a `ControllableSleeper` so commit-spawned highlight
 		// tasks never escape the test as live 250ms waits. Tests that
 		// observe the auto-clear pass their own sleeper and release it
@@ -1106,8 +1105,6 @@ struct ScannerViewModelTests {
 			haptics: haptics,
 			sound: sound,
 			settings: settings,
-			coordinator: coordinator,
-			repository: repository,
 		)
 		return (sut, env)
 	}
@@ -1117,15 +1114,17 @@ struct ScannerViewModelTests {
 	/// `env.scanner`, `env.torch`, … only when they actually need that
 	/// collaborator. Adding a new dependency to `ScannerViewModel` no longer
 	/// forces every test site to widen its `_` list — only the tests that
-	/// use the new dependency are touched.
+	/// use the new dependency are touched. The coordinator and the history
+	/// repository are deliberately **not** exposed here: the coordinator is
+	/// already reachable via `sut.coordinator`, and the persistence contract
+	/// is pinned by `ScanResultCoordinatorTests` — duplicating that here
+	/// would couple VM tests to the persistence seam.
 	private struct Environment {
 		let scanner: QRScannerSpy
 		let torch: TorchSpy
 		let haptics: HapticFeedbackSpy
 		let sound: DetectionSoundPlayingSpy
 		let settings: ScannerSettingsStub
-		let coordinator: ScanResultCoordinator
-		let repository: InMemoryScanHistoryRepository
 	}
 }
 

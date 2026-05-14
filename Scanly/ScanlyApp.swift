@@ -5,6 +5,10 @@
 import SwiftData
 import SwiftUI
 
+/// App entry point and top-level composition root. Owns the shared
+/// SwiftData `ModelContainer` for the process lifetime so the scanner
+/// (saves) and the eventual history UI (reads) bind to the same store
+/// without re-opening the on-disk database.
 @main
 struct ScanlyApp: App {
 	/// Shared SwiftData container for the history feature (§10.2).

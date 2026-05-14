@@ -16,7 +16,6 @@ struct ScannerView: View {
 	@State private var currentZoomFactor: CGFloat = 1
 	@State private var isZooming = false
 	@State private var zoomIndicatorHideTask: Task<Void, Never>?
-	private let coordinator: ScanResultCoordinator
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
@@ -29,14 +28,18 @@ struct ScannerView: View {
 		imageDetector: any ImageBarcodeDetecting,
 	) {
 		_viewModel = State(wrappedValue: viewModel)
-		coordinator = viewModel.coordinator
 		self.previewProvider = previewProvider
 		self.cameraControls = cameraControls
 		self.imageDetector = imageDetector
 	}
 
 	var body: some View {
-		@Bindable var coordinator = coordinator
+		// Pull the coordinator from the live view-model on every body
+		// re-evaluation rather than capturing it once in `init`.
+		// SwiftUI may re-create the view struct on parent re-renders;
+		// a captured field would silently diverge from the VM's actual
+		// coordinator if the composition root ever swaps it.
+		@Bindable var coordinator = viewModel.coordinator
 		ZStack {
 			CameraPreviewView(previewLayer: previewProvider.previewLayer)
 				.ignoresSafeArea()

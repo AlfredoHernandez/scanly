@@ -2,7 +2,6 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
-import Foundation
 import Observation
 import OSLog
 
@@ -39,6 +38,13 @@ final class ScanResultCoordinator {
 
 	private let repository: ScanHistoryRepository
 
+	/// Builds the coordinator with the given persistence backend.
+	///
+	/// - Parameter repository: The history store the coordinator
+	///   writes to on every `present(_:)`. Production passes
+	///   `SwiftDataScanHistoryRepository`; tests and previews pass an
+	///   in-memory variant so the seam stays independent of disk
+	///   state.
 	init(repository: ScanHistoryRepository) {
 		self.repository = repository
 	}

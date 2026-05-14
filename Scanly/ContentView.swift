@@ -9,6 +9,12 @@ struct ContentView: View {
 	@State private var scanner = AVFoundationQRScanner()
 	private let coordinator: ScanResultCoordinator
 
+	/// Wires the composition root for the scanner + history flow.
+	/// Builds a `SwiftDataScanHistoryRepository` against a fresh
+	/// `ModelContext` derived from the app-owned container, then
+	/// constructs the shared `ScanResultCoordinator` the scanner and
+	/// (in later steps) the history list both bind through. Called
+	/// once per view-tree composition from `ScanlyApp`.
 	init(modelContainer: ModelContainer) {
 		let repository = SwiftDataScanHistoryRepository(context: ModelContext(modelContainer))
 		coordinator = ScanResultCoordinator(repository: repository)

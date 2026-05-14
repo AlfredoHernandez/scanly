@@ -28,6 +28,13 @@ final class ScannerViewModel {
 	/// AVFoundation source to project from.
 	private(set) var lastDetectionBounds: CGRect?
 
+	/// Result-sheet presentation and history-persistence side-effect
+	/// per §10.2. The VM hands accepted scans to `coordinator.present(_:)`
+	/// and never touches `latestResult` or the repository directly —
+	/// keeping the pipeline focused on scanner state and isolating the
+	/// persistence seam to a single call-site. Module-internal so
+	/// `ScannerView` can build a `Binding` against the coordinator's
+	/// `latestResult` for `.sheet(item:)`.
 	let coordinator: ScanResultCoordinator
 
 	private let scanner: QRScanning
