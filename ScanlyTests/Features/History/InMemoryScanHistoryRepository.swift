@@ -82,15 +82,11 @@ final class InMemoryScanHistoryRepository: ScanHistoryRepository {
 
 	func search(query: String) throws -> [ScanResult] {
 		if let readError { throw readError }
-		let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-		guard !trimmed.isEmpty else { return try all() }
-		// Step 4 lands the §10.2.5 field-enumeration filter. Until
-		// then the fake matches `rawContent` only — enough to drive
-		// the wiring tests around the repository.
-		return rows
-			.filter { $0.rawContent.localizedCaseInsensitiveContains(trimmed) }
-			.sorted { $0.lastScannedAt > $1.lastScannedAt }
-			.map(Self.toScanResult)
+		// The repository's job is "sort + delegate to the shared
+		// algorithm". The §10.2.5 field-enumeration semantics live
+		// in `HistorySearch` so both this fake and the SwiftData
+		// implementation behave identically.
+		return try HistorySearch.filter(all(), query: query)
 	}
 
 	private static func toScanResult(_ row: Row) -> ScanResult {

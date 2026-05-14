@@ -16,14 +16,28 @@ import Foundation
 /// so individual tests can pin the dimension they're exercising
 /// (`rawContent` for upsert tests, `id` for identity-preservation
 /// tests, `at` for ordering tests, etc.).
+///
+/// `type` defaults to `.text(rawContent)` so the per-row index built
+/// by `HistorySearch` (§10.2.5) matches `rawContent` verbatim — that
+/// is the implicit assumption of older "search by rawContent
+/// substring" tests, which would otherwise break when `rawContent`
+/// happened to look like a URL but type was hardcoded to a different
+/// URL. Pass an explicit `type:` for tests that need a structured
+/// QR payload.
 func anyResult(
 	id: UUID = UUID(),
 	rawContent: String = "https://example.com",
-	type: QRType = .url(URL(string: "https://example.com")!),
+	type: QRType? = nil,
 	format: BarcodeFormat = .qr,
 	at scannedAt: Date = Date(timeIntervalSince1970: 0),
 ) -> ScanResult {
-	ScanResult(id: id, rawContent: rawContent, type: type, format: format, scannedAt: scannedAt)
+	ScanResult(
+		id: id,
+		rawContent: rawContent,
+		type: type ?? .text(rawContent),
+		format: format,
+		scannedAt: scannedAt,
+	)
 }
 
 /// `Date` offset from the Unix epoch by `secondsFromEpoch`. Cheaper

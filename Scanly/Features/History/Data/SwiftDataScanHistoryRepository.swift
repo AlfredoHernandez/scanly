@@ -81,14 +81,11 @@ final class SwiftDataScanHistoryRepository: ScanHistoryRepository {
 	}
 
 	func search(query: String) throws -> [ScanResult] {
-		let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-		guard !trimmed.isEmpty else { return try all() }
-		// Step 4 lands the §10.2.5 field-enumeration filter. Until
-		// then the live impl matches `rawContent` only, mirroring
-		// the in-memory fake. Both will swap to the shared search
-		// algorithm in step 4 — the repository becomes a thin
-		// fetch + delegate at that point.
-		return try all().filter { $0.rawContent.localizedCaseInsensitiveContains(trimmed) }
+		// Fetch then delegate to `HistorySearch` so the §10.2.5
+		// field-enumeration semantics stay in one place — the fake
+		// and this implementation can never drift. Fetching all
+		// rows is correct for the v1.0 bounded dataset (§10.2.4).
+		try HistorySearch.filter(all(), query: query)
 	}
 
 	// MARK: - Mapping
