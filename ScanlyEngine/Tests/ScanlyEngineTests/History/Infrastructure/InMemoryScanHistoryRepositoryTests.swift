@@ -180,6 +180,17 @@ struct InMemoryScanHistoryRepositoryTests {
 	}
 
 	@Test
+	func `delete batch with empty input is a no-op`() throws {
+		let sut = makeSUT()
+		try sut.save(anyResult(rawContent: "a"))
+		try sut.save(anyResult(rawContent: "b"))
+
+		try sut.delete([])
+
+		#expect(try sut.all().count == 2)
+	}
+
+	@Test
 	func `deleteAll clears every row`() throws {
 		let sut = makeSUT()
 		try sut.save(anyResult(rawContent: "a"))

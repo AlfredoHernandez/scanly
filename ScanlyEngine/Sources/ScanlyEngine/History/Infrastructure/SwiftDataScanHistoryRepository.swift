@@ -53,8 +53,10 @@ public final class SwiftDataScanHistoryRepository: ScanHistoryRepository {
 	public func delete(_ entries: [ScanResult]) throws {
 		let keys = Set(entries.map(\.rawContent))
 		guard !keys.isEmpty else { return }
-		let rows = try context.fetch(FetchDescriptor<ScanHistoryEntry>())
-		for row in rows where keys.contains(row.rawContent) {
+		let descriptor = FetchDescriptor<ScanHistoryEntry>(
+			predicate: #Predicate { keys.contains($0.rawContent) },
+		)
+		for row in try context.fetch(descriptor) {
 			context.delete(row)
 		}
 		try context.save()
