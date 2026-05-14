@@ -19,7 +19,6 @@ struct ScannerView: View {
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
-	@Environment(\.scenePhase) private var scenePhase
 
 	init(
 		viewModel: ScannerViewModel,
@@ -69,21 +68,6 @@ struct ScannerView: View {
 					.transition(.opacity)
 					.allowsHitTesting(false)
 			}
-		}
-		.task(id: scenePhase) {
-			switch scenePhase {
-			case .active:
-				await viewModel.start()
-
-			case .inactive, .background:
-				viewModel.stop()
-
-			@unknown default:
-				break
-			}
-		}
-		.onDisappear {
-			viewModel.stop()
 		}
 		.sheet(item: $coordinator.latestResult) { result in
 			ScanResultSheet(result: result)
