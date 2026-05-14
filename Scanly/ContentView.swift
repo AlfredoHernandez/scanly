@@ -54,11 +54,12 @@ struct ContentView: View {
 				dependencies.scannerViewModel.stop()
 			}
 		}
-		.onChange(of: coordinator.selectedTab) { _, new in
-			// `TabView`'s `.task` is single-shot. Reload whenever the
-			// user lands on the History tab so a scan committed on the
-			// Scanner tab is visible on return.
-			if new == .history {
+		.task(id: coordinator.selectedTab) {
+			// Single owner of the history reload trigger: fires on
+			// initial render and on every change, so the list refreshes
+			// when the user lands on the History tab whether it's the
+			// first visit or a return from Scanner.
+			if coordinator.selectedTab == .history {
 				dependencies.historyViewModel.load()
 			}
 		}

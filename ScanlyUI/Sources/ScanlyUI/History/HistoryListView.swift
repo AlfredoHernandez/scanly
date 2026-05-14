@@ -3,7 +3,6 @@
 //
 
 import ScanlyEngine
-import SwiftData
 import SwiftUI
 
 /// Persisted scan history. Rows are sorted by `lastScannedAt` desc
@@ -39,7 +38,6 @@ public struct HistoryListView: View {
 					Text("history.clear.confirm.message")
 				}
 		}
-		.task { viewModel.load() }
 		.onChange(of: viewModel.entries.isEmpty) { _, isEmpty in
 			// When a batch delete (or "Clear history") drains the
 			// list, the `EditButton` disappears with it. Without

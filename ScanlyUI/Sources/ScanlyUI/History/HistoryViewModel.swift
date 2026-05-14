@@ -37,6 +37,7 @@ public final class HistoryViewModel {
 	}
 
 	public func load() {
+		state = .loading
 		do {
 			entries = try repository.all()
 			state = .loaded
