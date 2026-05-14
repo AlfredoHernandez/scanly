@@ -17,9 +17,3 @@ public nonisolated struct WiFiCredentials: Equatable, Sendable {
 		self.isHidden = isHidden
 	}
 }
-
-public nonisolated enum WiFiSecurity: String, Equatable, Sendable {
-	case wpa
-	case wep
-	case none
-}
