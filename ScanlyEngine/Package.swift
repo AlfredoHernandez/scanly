@@ -10,9 +10,17 @@ let package = Package(
 	],
 	products: [
 		.library(name: "ScanlyEngine", targets: ["ScanlyEngine"]),
+		// Test doubles, fixtures, and async helpers shared between
+		// ScanlyEngineTests and ScanlyUITests. Test code only — never
+		// linked into the app target.
+		.library(name: "ScanlyEngineTestSupport", targets: ["ScanlyEngineTestSupport"]),
 	],
 	targets: [
 		.target(name: "ScanlyEngine"),
-		.testTarget(name: "ScanlyEngineTests", dependencies: ["ScanlyEngine"]),
+		.target(name: "ScanlyEngineTestSupport", dependencies: ["ScanlyEngine"]),
+		.testTarget(
+			name: "ScanlyEngineTests",
+			dependencies: ["ScanlyEngine", "ScanlyEngineTestSupport"],
+		),
 	],
 )

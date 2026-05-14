@@ -16,6 +16,12 @@ let package = Package(
 	],
 	targets: [
 		.target(name: "ScanlyUI", dependencies: ["ScanlyEngine"]),
-		.testTarget(name: "ScanlyUITests", dependencies: ["ScanlyUI"]),
+		.testTarget(
+			name: "ScanlyUITests",
+			dependencies: [
+				"ScanlyUI",
+				.product(name: "ScanlyEngineTestSupport", package: "ScanlyEngine"),
+			],
+		),
 	],
 )
