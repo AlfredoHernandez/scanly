@@ -14,10 +14,14 @@ import UIKit
 ///
 /// Callers wrap this in their own navigation chrome (a sheet's
 /// `NavigationStack` + Done button, or a list's pushed destination).
-struct ScanResultDetailContent: View {
-	let result: ScanResult
+public struct ScanResultDetailContent: View {
+	private let result: ScanResult
 
-	var body: some View {
+	public init(result: ScanResult) {
+		self.result = result
+	}
+
+	public var body: some View {
 		Form {
 			Section("scanner.result.type") {
 				Text(typeLabel)

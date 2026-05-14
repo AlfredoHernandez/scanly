@@ -3,6 +3,7 @@
 //
 
 import ScanlyEngine
+import ScanlyUI
 import SwiftUI
 
 /// Pushed from `HistoryListView` when the user taps a row. The body

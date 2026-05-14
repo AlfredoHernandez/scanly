@@ -3,6 +3,7 @@
 //
 
 import ScanlyEngine
+import ScanlyUI
 import SwiftUI
 
 struct ScanResultSheet: View {

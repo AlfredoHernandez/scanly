@@ -2,8 +2,8 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
-@testable import Scanly
 @testable import ScanlyEngine
+@testable import ScanlyUI
 import CoreGraphics
 import Foundation
 import Testing

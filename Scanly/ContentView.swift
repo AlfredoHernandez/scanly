@@ -3,6 +3,7 @@
 //
 
 import ScanlyEngine
+import ScanlyUI
 import SwiftData
 import SwiftUI
 

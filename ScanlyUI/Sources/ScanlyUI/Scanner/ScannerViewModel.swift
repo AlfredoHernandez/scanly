@@ -9,8 +9,8 @@ import ScanlyEngine
 
 @MainActor
 @Observable
-final class ScannerViewModel {
-	enum State: Equatable {
+public final class ScannerViewModel {
+	public enum State: Equatable {
 		case idle
 		case starting
 		case scanning
@@ -18,16 +18,16 @@ final class ScannerViewModel {
 		case failed(message: String)
 	}
 
-	private(set) var state: State = .idle
-	private(set) var isDetectingCode = false
-	var isTorchOn = false
+	public private(set) var state: State = .idle
+	public private(set) var isDetectingCode = false
+	public var isTorchOn = false
 	/// Bounding box of the most recently committed live-camera scan, in
 	/// AVFoundation metadata-output coordinates. Set on commit and
 	/// auto-cleared after `highlightDuration` so the view can flash a
 	/// short overlay around the detected QR before the sheet covers it
 	/// (§10.1.4). `nil` for image-picker submissions, which have no
 	/// AVFoundation source to project from.
-	private(set) var lastDetectionBounds: CGRect?
+	public private(set) var lastDetectionBounds: CGRect?
 
 	/// Result-sheet presentation and history-persistence side-effect
 	/// per §10.2. The VM hands accepted scans to `coordinator.present(_:)`
@@ -36,7 +36,7 @@ final class ScannerViewModel {
 	/// persistence seam to a single call-site. Module-internal so
 	/// `ScannerView` can build a `Binding` against the coordinator's
 	/// `latestResult` for `.sheet(item:)`.
-	let coordinator: ScanResultCoordinator
+	public let coordinator: ScanResultCoordinator
 
 	private let scanner: QRScanning
 	private let torch: TorchControlling
@@ -62,7 +62,7 @@ final class ScannerViewModel {
 	/// already resumed), the clear is skipped.
 	@ObservationIgnored private var highlightGeneration: UInt64 = 0
 
-	var isTorchAvailable: Bool {
+	public var isTorchAvailable: Bool {
 		torch.isTorchAvailable
 	}
 
@@ -92,7 +92,7 @@ final class ScannerViewModel {
 	///     box stays on screen after a live commit (§10.1.4). Defaults to
 	///     250 ms — brief enough to read as a flash, long enough to
 	///     register before the sheet covers the preview.
-	init(
+	public init(
 		scanner: QRScanning,
 		torch: TorchControlling,
 		haptics: HapticFeedbackControlling,
@@ -126,7 +126,7 @@ final class ScannerViewModel {
 		}
 	}
 
-	func start() async {
+	public func start() async {
 		// Short-circuit while a result sheet is still presented. The
 		// `.task(id: scenePhase)` modifier in `ScannerView` re-fires
 		// `start()` whenever the app returns to `.active`; without this
@@ -197,7 +197,7 @@ final class ScannerViewModel {
 	/// cleared flag and leave the scanner dead instead of resuming.
 	/// `start()` ignores re-entries while a result is up, so the
 	/// scanner can only come back through the dismissal path.
-	func stop() {
+	public func stop() {
 		restartRequestedAfterStop = false
 		cancelDetectionHighlight()
 		if coordinator.latestResult == nil {
@@ -222,7 +222,7 @@ final class ScannerViewModel {
 		scanner.stop()
 	}
 
-	func toggleTorch() {
+	public func toggleTorch() {
 		let desired = !isTorchOn
 		do {
 			try torch.setTorch(desired)
@@ -246,7 +246,7 @@ final class ScannerViewModel {
 	/// only on `latestResult == nil` and non-empty content; callers with
 	/// stricter preconditions (e.g. live scanning must be in `.scanning`)
 	/// add their own guards before calling in.
-	func submit(content: String, format: BarcodeFormat) {
+	public func submit(content: String, format: BarcodeFormat) {
 		commit(content: content, format: format, bounds: nil)
 	}
 
@@ -332,7 +332,7 @@ final class ScannerViewModel {
 	/// Called by the view on the `latestResult: non-nil → nil`
 	/// transition. Spurious calls without a prior commit are safe:
 	/// both legs short-circuit when their respective state is unset.
-	func didDismissResult() async {
+	public func didDismissResult() async {
 		if let content = lastPresentedContent {
 			cooldown.recordDismissal(of: content)
 			lastPresentedContent = nil

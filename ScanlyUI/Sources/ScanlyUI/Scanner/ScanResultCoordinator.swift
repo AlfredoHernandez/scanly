@@ -29,13 +29,13 @@ import ScanlyEngine
 /// simply won't show it. No user-visible toast in v1.0.
 @MainActor
 @Observable
-final class ScanResultCoordinator {
+public final class ScanResultCoordinator {
 	/// The result currently being presented to the user, or `nil`
 	/// when no sheet is up. The view binds `.sheet(item:)` to this
 	/// property; setting it to `nil` is the dismissal signal that
 	/// downstream cleanup (cooldown record, session restart) keys
 	/// on.
-	var latestResult: ScanResult?
+	public var latestResult: ScanResult?
 
 	private let repository: ScanHistoryRepository
 
@@ -46,7 +46,7 @@ final class ScanResultCoordinator {
 	///   `SwiftDataScanHistoryRepository`; tests and previews pass an
 	///   in-memory variant so the seam stays independent of disk
 	///   state.
-	init(repository: ScanHistoryRepository) {
+	public init(repository: ScanHistoryRepository) {
 		self.repository = repository
 	}
 
@@ -54,7 +54,7 @@ final class ScanResultCoordinator {
 	/// active sheet content. Save failures are logged but never
 	/// propagated — the presentation guarantee is independent of
 	/// the persistence outcome per §10.2.1.
-	func present(_ result: ScanResult) {
+	public func present(_ result: ScanResult) {
 		do {
 			try repository.save(result)
 		} catch {
