@@ -80,14 +80,6 @@ final class SwiftDataScanHistoryRepository: ScanHistoryRepository {
 		try context.save()
 	}
 
-	func search(query: String) throws -> [ScanResult] {
-		// Fetch then delegate to `HistorySearch` so the §10.2.5
-		// field-enumeration semantics stay in one place — the fake
-		// and this implementation can never drift. Fetching all
-		// rows is correct for the v1.0 bounded dataset (§10.2.4).
-		try HistorySearch.filter(all(), query: query)
-	}
-
 	// MARK: - Mapping
 
 	private func fetchEntry(rawContent: String) throws -> ScanHistoryEntry? {

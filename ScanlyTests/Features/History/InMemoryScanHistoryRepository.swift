@@ -80,15 +80,6 @@ final class InMemoryScanHistoryRepository: ScanHistoryRepository {
 		rows.removeAll()
 	}
 
-	func search(query: String) throws -> [ScanResult] {
-		if let readError { throw readError }
-		// The repository's job is "sort + delegate to the shared
-		// algorithm". The §10.2.5 field-enumeration semantics live
-		// in `HistorySearch` so both this fake and the SwiftData
-		// implementation behave identically.
-		return try HistorySearch.filter(all(), query: query)
-	}
-
 	private static func toScanResult(_ row: Row) -> ScanResult {
 		ScanResult(
 			id: row.id,

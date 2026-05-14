@@ -44,15 +44,14 @@ protocol ScanHistoryRepository: AnyObject {
 
 	/// Clears every entry. Surfaced by §3.3's "Clear history" action.
 	func deleteAll() throws
-
-	/// Returns the entries matching `query` against the field
-	/// enumeration from §10.2.5, ordered by `lastScannedAt` desc.
-	/// An empty / whitespace-only query returns the full list.
-	///
-	/// The v1.0 contract narrows the field set so that sensitive
-	/// payload pieces (Wi-Fi password, email subject/body, SMS body,
-	/// URL path / query / fragment) are never matched against — even
-	/// though they are visible in the detail view. The detail-view
-	/// inspector and the search index are deliberately decoupled.
-	func search(query: String) throws -> [ScanResult]
 }
+
+// Note: search is *not* a protocol requirement. Per §10.2's
+// "Implications for current code" the v1.0 search runs in-memory in
+// the view model over a `@Query`-loaded snapshot, with the
+// field-enumeration semantics living in the pure `HistorySearch`
+// type. Keeping a `search(query:)` requirement on the repository
+// would mean both the in-memory fake and the SwiftData implementation
+// have to maintain a parallel filter that the VM never actually
+// calls — two extra surfaces to keep in sync with `HistorySearch`
+// for zero production benefit.

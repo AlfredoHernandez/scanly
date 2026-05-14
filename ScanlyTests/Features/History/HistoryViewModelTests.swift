@@ -41,12 +41,27 @@ struct HistoryViewModelTests {
 		repository.readError = anyError()
 		sut.load()
 
-		if case .failed = sut.state {
-			// ok
-		} else {
-			Issue.record("Expected .failed, got \(sut.state)")
-		}
+		#expect(isFailed(sut.state), "Expected .failed, got \(sut.state)")
 		#expect(sut.entries.isEmpty, "Failed load must drop stale entries; the list mustn't render an inconsistent snapshot")
+	}
+
+	@Test
+	func `load recovers to loaded after a transient failure`() throws {
+		// The `.failed` placeholder shows a Try Again button that
+		// calls `load()` again. Without resetting `state` at the top
+		// of `load()` the failure would be terminal — verify the
+		// happy path back to `.loaded` is wired.
+		let (sut, repository) = makeSUT()
+		try repository.save(anyResult(rawContent: "a"))
+		repository.readError = anyError()
+		sut.load()
+		#expect(isFailed(sut.state))
+
+		repository.readError = nil
+		sut.load()
+
+		#expect(sut.state == .loaded)
+		#expect(sut.entries.map(\.rawContent) == ["a"])
 	}
 
 	// MARK: - visibleEntries (search delegation)
@@ -197,5 +212,11 @@ struct HistoryViewModelTests {
 		let repository = InMemoryScanHistoryRepository()
 		let viewModel = HistoryViewModel(repository: repository)
 		return (viewModel, repository)
+	}
+
+	/// Pattern-match helper for the `.failed` case so tests can read
+	/// `#expect(isFailed(sut.state))` instead of unrolling `if case`.
+	private func isFailed(_ state: HistoryViewModel.State) -> Bool {
+		if case .failed = state { true } else { false }
 	}
 }

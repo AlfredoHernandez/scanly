@@ -48,6 +48,15 @@ struct HistoryListView: View {
 				}
 		}
 		.task { viewModel.load() }
+		.onChange(of: viewModel.entries.isEmpty) { _, isEmpty in
+			// When a batch delete (or "Clear history") drains the
+			// list, the `EditButton` disappears with it. Without
+			// resetting `editMode`, the next scan that re-populates
+			// the list silently re-enters edit mode on appearance.
+			if isEmpty, editMode == .active {
+				withAnimation { editMode = .inactive }
+			}
+		}
 	}
 
 	@ViewBuilder
@@ -206,10 +215,6 @@ private final class PreviewScanHistoryRepository: ScanHistoryRepository {
 
 	func deleteAll() throws {
 		rows.removeAll()
-	}
-
-	func search(query: String) throws -> [ScanResult] {
-		try HistorySearch.filter(all(), query: query)
 	}
 }
 

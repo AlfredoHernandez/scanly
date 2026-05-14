@@ -194,48 +194,6 @@ struct InMemoryScanHistoryRepositoryTests {
 		#expect(try sut.all().isEmpty)
 	}
 
-	// MARK: - search() — minimal contract (full enumeration lands in Step 4)
-
-	@Test
-	func `search with an empty query returns every row`() throws {
-		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "a"))
-		try sut.save(anyResult(rawContent: "b"))
-
-		#expect(try sut.search(query: "").count == 2)
-	}
-
-	@Test
-	func `search with a whitespace-only query returns every row`() throws {
-		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "a"))
-
-		#expect(try sut.search(query: "   \n\t").count == 1)
-	}
-
-	@Test
-	func `search by raw content substring returns the row`() throws {
-		// Use plaintext rawContent so the rawContent IS what gets
-		// indexed — `.text(rawContent)` (the default) routes through
-		// `HistorySearch`'s text branch. A URL-shaped rawContent
-		// would index its parsed host instead of the literal text,
-		// which is a different code path and not what this test
-		// claims to exercise.
-		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "favorite place"))
-		try sut.save(anyResult(rawContent: "another item"))
-
-		#expect(try sut.search(query: "favorite").map(\.rawContent) == ["favorite place"])
-	}
-
-	@Test
-	func `search on raw content is case-insensitive`() throws {
-		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "FAVORITE Place"))
-
-		#expect(try sut.search(query: "favorite").count == 1)
-	}
-
 	// MARK: - error propagation
 
 	@Test
@@ -258,20 +216,6 @@ struct InMemoryScanHistoryRepositoryTests {
 			try sut.delete(anyResult(rawContent: "a"))
 		}
 		#expect(try sut.all().count == 1)
-	}
-
-	@Test
-	func `search propagates the configured read error on non-empty queries`() throws {
-		// `search` has a separate early-return branch for empty
-		// queries that delegates to `all()`; cover the non-empty path
-		// explicitly so a regression in the throwing branch is caught.
-		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "https://example.com"))
-		sut.readError = anyError()
-
-		#expect(throws: NSError.self) {
-			try sut.search(query: "example")
-		}
 	}
 
 	@Test

@@ -359,9 +359,6 @@ private final class PreviewScanHistoryRepository: ScanHistoryRepository {
 	func delete(_: ScanResult) throws {}
 	func delete(_: [ScanResult]) throws {}
 	func deleteAll() throws {}
-	func search(query _: String) throws -> [ScanResult] {
-		[]
-	}
 }
 
 #Preview {

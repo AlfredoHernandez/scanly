@@ -169,49 +169,6 @@ struct SwiftDataScanHistoryRepositoryTests {
 		#expect(try sut.all().isEmpty)
 	}
 
-	@Test
-	func `search with an empty query returns every row`() throws {
-		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "a"))
-		try sut.save(anyResult(rawContent: "b"))
-
-		#expect(try sut.search(query: "").count == 2)
-	}
-
-	@Test
-	func `search with a whitespace-only query returns every row`() throws {
-		// Mirrors the InMemory fake's whitespace test so a future
-		// step-4 refactor of the SwiftData impl can't silently drop
-		// the trim+guard branch.
-		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "a"))
-
-		#expect(try sut.search(query: "   \n\t").count == 1)
-	}
-
-	@Test
-	func `search by raw content substring returns the row`() throws {
-		// Use plaintext rawContent: the SwiftData impl re-parses
-		// `rawContent` on read via `QRContentParser`, so a URL-shaped
-		// string would surface as `.url(...)` and the match would go
-		// through `HistorySearch`'s host-only branch — a different
-		// code path from what this test claims. Plaintext keeps the
-		// type at `.text(...)`, indexing `rawContent` directly.
-		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "favorite place"))
-		try sut.save(anyResult(rawContent: "another item"))
-
-		#expect(try sut.search(query: "favorite").map(\.rawContent) == ["favorite place"])
-	}
-
-	@Test
-	func `search on raw content is case-insensitive`() throws {
-		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "FAVORITE Place"))
-
-		#expect(try sut.search(query: "favorite").count == 1)
-	}
-
 	// MARK: - SwiftData-specific invariants
 
 	@Test
