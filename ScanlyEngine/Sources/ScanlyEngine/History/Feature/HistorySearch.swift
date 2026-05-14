@@ -37,7 +37,7 @@ public nonisolated enum HistorySearch {
 		case let .url(url):
 			// Opaque URLs without an authority (e.g. `data:...`) have
 			// `host == nil` and therefore no derived index.
-			[url.host()].compactMap(\.self)
+			url.host().map { [$0] } ?? []
 
 		case let .wifi(credentials):
 			[credentials.ssid]

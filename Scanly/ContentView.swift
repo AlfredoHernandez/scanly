@@ -67,10 +67,17 @@ struct ContentView: View {
 }
 
 #Preview {
+	ContentView()
+		.environment(\.appDependencies, AppDependencies(modelContainer: previewContainer()))
+		.environment(\.appCoordinator, AppCoordinator())
+}
+
+private func previewContainer() -> ModelContainer {
 	let schema = Schema([ScanHistoryEntry.self])
 	let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-	let container = try! ModelContainer(for: schema, configurations: [configuration])
-	return ContentView()
-		.environment(\.appDependencies, AppDependencies(modelContainer: container))
-		.environment(\.appCoordinator, AppCoordinator())
+	do {
+		return try ModelContainer(for: schema, configurations: [configuration])
+	} catch {
+		fatalError("Preview container failed to initialize: \(error)")
+	}
 }

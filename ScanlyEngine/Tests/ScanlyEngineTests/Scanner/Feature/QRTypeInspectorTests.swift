@@ -75,10 +75,14 @@ struct QRTypeInspectorTests {
 	// MARK: - SMS
 
 	@Test
-	func `sms rows include body only when present`() {
+	func `sms rows omit body when nil`() {
 		#expect(QRType.sms(SMSPayload(number: "+521234", body: nil)).inspectorRows == [
 			.localized("scanner.result.sms.number", value: "+521234"),
 		])
+	}
+
+	@Test
+	func `sms rows include body when present`() {
 		#expect(QRType.sms(SMSPayload(number: "+521234", body: "hola")).inspectorRows == [
 			.localized("scanner.result.sms.number", value: "+521234"),
 			.localized("scanner.result.sms.body", value: "hola"),
@@ -99,9 +103,10 @@ struct QRTypeInspectorTests {
 	@Test
 	func `location rows format latitude and longitude`() {
 		let rows = QRType.location(latitude: 19.4326, longitude: -99.1332).inspectorRows
-		#expect(rows.count == 2)
-		#expect(rows[0] == .localized("scanner.result.location.latitude", value: "19.4326"))
-		#expect(rows[1] == .localized("scanner.result.location.longitude", value: "-99.1332"))
+		#expect(rows == [
+			.localized("scanner.result.location.latitude", value: "19.4326"),
+			.localized("scanner.result.location.longitude", value: "-99.1332"),
+		])
 	}
 
 	// MARK: - No-structure cases

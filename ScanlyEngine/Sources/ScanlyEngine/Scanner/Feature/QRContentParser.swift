@@ -38,6 +38,9 @@ public nonisolated struct QRContentParser: QRContentParsing {
 				.trimmingCharacters(in: .whitespaces)
 			return .phone(number)
 		}
+		// `smsto:` must be checked before `sms:` — they share the same
+		// head and reordering would consume the longer prefix's body
+		// with the shorter prefix's length.
 		if lower.hasPrefix(LowercasedPrefix.smsto),
 		   let sms = Self.parseSMS(body: String(trimmed.dropFirst(LowercasedPrefix.smsto.count)))
 		{

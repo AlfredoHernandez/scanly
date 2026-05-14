@@ -339,7 +339,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `scan blocked while not scanning does not play haptic`() {
-		let (sut, env) = makeSUT()
+		let (_, env) = makeSUT()
 		env.scanner.simulateScan("https://example.com")
 		#expect(env.haptics.playSuccessCallCount == 0)
 	}
