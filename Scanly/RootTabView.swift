@@ -16,7 +16,7 @@ private struct ScannerLifecycleKey: Hashable {
 	let scenePhase: ScenePhase
 }
 
-struct ContentView: View {
+struct RootTabView: View {
 	@Environment(\.appDependencies) private var dependencies
 	@Environment(\.appCoordinator) private var coordinator
 	@Environment(\.scenePhase) private var scenePhase
@@ -67,7 +67,7 @@ struct ContentView: View {
 }
 
 #Preview {
-	ContentView()
+	RootTabView()
 		.environment(\.appDependencies, AppDependencies(modelContainer: previewContainer()))
 		.environment(\.appCoordinator, AppCoordinator())
 }

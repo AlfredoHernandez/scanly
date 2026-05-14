@@ -10,7 +10,7 @@ struct ScanlyApp: App {
 
 	var body: some Scene {
 		WindowGroup {
-			ContentView()
+			RootTabView()
 				.environment(\.appDependencies, dependencies)
 				.environment(\.appCoordinator, coordinator)
 		}
