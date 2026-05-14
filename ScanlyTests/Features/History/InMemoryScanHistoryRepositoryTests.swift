@@ -106,6 +106,24 @@ struct InMemoryScanHistoryRepositoryTests {
 		#expect(try sut.all().map(\.rawContent) == ["a", "b"])
 	}
 
+	@Test
+	func `save with existing rawContent preserves the original type and format`() throws {
+		// The schema fields `typeDiscriminator` and `format` are
+		// captured at the *initial* insert and never overwritten by a
+		// subsequent re-scan. In practice the same `rawContent` parses
+		// to the same `QRType` (the parser is deterministic on
+		// rawContent), but the invariant must hold even if a future
+		// caller hands the repo a different type/format on re-save.
+		let sut = makeSUT()
+		let initialURL = try #require(URL(string: "https://example.com"))
+		try sut.save(anyResult(rawContent: "https://example.com", type: .url(initialURL), format: .qr))
+		try sut.save(anyResult(rawContent: "https://example.com", type: .text("https://example.com"), format: .code128))
+
+		let entry = try sut.all()[0]
+		#expect(entry.format == .qr, "Re-save must not overwrite the original format")
+		#expect(entry.type == .url(initialURL), "Re-save must not overwrite the original parsed type")
+	}
+
 	// MARK: - save() — error path
 
 	@Test
@@ -234,6 +252,46 @@ struct InMemoryScanHistoryRepositoryTests {
 			try sut.delete(anyResult(rawContent: "a"))
 		}
 		#expect(try sut.all().count == 1)
+	}
+
+	@Test
+	func `search propagates the configured read error on non-empty queries`() throws {
+		// `search` has a separate early-return branch for empty
+		// queries that delegates to `all()`; cover the non-empty path
+		// explicitly so a regression in the throwing branch is caught.
+		let sut = makeSUT()
+		try sut.save(anyResult(rawContent: "https://example.com"))
+		sut.readError = anyError()
+
+		#expect(throws: NSError.self) {
+			try sut.search(query: "example")
+		}
+	}
+
+	@Test
+	func `delete batch propagates the configured delete error and leaves the store unchanged`() throws {
+		let sut = makeSUT()
+		try sut.save(anyResult(rawContent: "a"))
+		try sut.save(anyResult(rawContent: "b"))
+		sut.deleteError = anyError()
+
+		#expect(throws: NSError.self) {
+			try sut.delete([anyResult(rawContent: "a"), anyResult(rawContent: "b")])
+		}
+		#expect(try sut.all().count == 2, "Failed batch delete must be atomic — leave every row in place")
+	}
+
+	@Test
+	func `deleteAll propagates the configured delete error and leaves the store unchanged`() throws {
+		let sut = makeSUT()
+		try sut.save(anyResult(rawContent: "a"))
+		try sut.save(anyResult(rawContent: "b"))
+		sut.deleteError = anyError()
+
+		#expect(throws: NSError.self) {
+			try sut.deleteAll()
+		}
+		#expect(try sut.all().count == 2, "Failed clear must leave every row in place")
 	}
 
 	// MARK: - Helpers
