@@ -15,17 +15,11 @@ import ScanlyEngine
 /// requirement can be satisfied without inheriting the test target's
 /// default MainActor isolation.
 public final nonisolated class ControllableSleeper: Sleeper, @unchecked Sendable {
-	public struct Call: Equatable {
-		public let id: UUID
-		public let duration: Duration
-	}
-
 	private let state = OSAllocatedUnfairLock(
-		initialState: State(nextID: 0, waiters: [:]),
+		initialState: State(waiters: [:]),
 	)
 
 	private struct State {
-		var nextID: Int
 		var waiters: [UUID: CheckedContinuation<Void, Error>]
 	}
 
@@ -77,6 +71,7 @@ public final nonisolated class ControllableSleeper: Sleeper, @unchecked Sendable
 
 	@concurrent
 	public func sleep(for _: Duration) async throws {
+		try Task.checkCancellation()
 		let id = UUID()
 		try await withTaskCancellationHandler {
 			try await withCheckedThrowingContinuation { continuation in
