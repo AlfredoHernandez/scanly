@@ -179,6 +179,17 @@ struct SwiftDataScanHistoryRepositoryTests {
 	}
 
 	@Test
+	func `search with a whitespace-only query returns every row`() throws {
+		// Mirrors the InMemory fake's whitespace test so a future
+		// step-4 refactor of the SwiftData impl can't silently drop
+		// the trim+guard branch.
+		let (sut, _) = try makeSUT()
+		try sut.save(anyResult(rawContent: "a"))
+
+		#expect(try sut.search(query: "   \n\t").count == 1)
+	}
+
+	@Test
 	func `search by raw content substring returns the row`() throws {
 		let (sut, _) = try makeSUT()
 		try sut.save(anyResult(rawContent: "https://example.com"))
@@ -244,20 +255,6 @@ struct SwiftDataScanHistoryRepositoryTests {
 		let container = try ModelContainer(for: schema, configurations: [configuration])
 		let repository = SwiftDataScanHistoryRepository(context: ModelContext(container))
 		return (repository, container)
-	}
-
-	private func anyResult(
-		id: UUID = UUID(),
-		rawContent: String = "https://example.com",
-		type: QRType = .url(URL(string: "https://example.com")!),
-		format: BarcodeFormat = .qr,
-		at scannedAt: Date = Date(timeIntervalSince1970: 0),
-	) -> ScanResult {
-		ScanResult(id: id, rawContent: rawContent, type: type, format: format, scannedAt: scannedAt)
-	}
-
-	private func timestamp(_ secondsFromEpoch: TimeInterval) -> Date {
-		Date(timeIntervalSince1970: secondsFromEpoch)
 	}
 }
 

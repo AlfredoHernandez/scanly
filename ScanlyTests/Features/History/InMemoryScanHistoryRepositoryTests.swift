@@ -299,22 +299,4 @@ struct InMemoryScanHistoryRepositoryTests {
 	private func makeSUT() -> InMemoryScanHistoryRepository {
 		InMemoryScanHistoryRepository()
 	}
-
-	private func anyResult(
-		id: UUID = UUID(),
-		rawContent: String = "https://example.com",
-		type: QRType = .url(URL(string: "https://example.com")!),
-		format: BarcodeFormat = .qr,
-		at scannedAt: Date = Date(timeIntervalSince1970: 0),
-	) -> ScanResult {
-		ScanResult(id: id, rawContent: rawContent, type: type, format: format, scannedAt: scannedAt)
-	}
-
-	private func timestamp(_ secondsFromEpoch: TimeInterval) -> Date {
-		Date(timeIntervalSince1970: secondsFromEpoch)
-	}
-
-	private func anyError() -> NSError {
-		NSError(domain: "test.history", code: 0)
-	}
 }
