@@ -17,16 +17,12 @@ private struct ScannerLifecycleKey: Hashable {
 }
 
 struct ContentView: View {
-	private let dependencies: AppDependencies
-	@Bindable private var coordinator: AppCoordinator
+	@Environment(\.appDependencies) private var dependencies
+	@Environment(\.appCoordinator) private var coordinator
 	@Environment(\.scenePhase) private var scenePhase
 
-	init(dependencies: AppDependencies, coordinator: AppCoordinator) {
-		self.dependencies = dependencies
-		self.coordinator = coordinator
-	}
-
 	var body: some View {
+		@Bindable var coordinator = coordinator
 		TabView(selection: $coordinator.selectedTab) {
 			ScannerView(
 				viewModel: dependencies.scannerViewModel,
@@ -73,8 +69,7 @@ struct ContentView: View {
 	let schema = Schema([ScanHistoryEntry.self])
 	let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
 	let container = try! ModelContainer(for: schema, configurations: [configuration])
-	return ContentView(
-		dependencies: AppDependencies(modelContainer: container),
-		coordinator: AppCoordinator(),
-	)
+	return ContentView()
+		.environment(\.appDependencies, AppDependencies(modelContainer: container))
+		.environment(\.appCoordinator, AppCoordinator())
 }
