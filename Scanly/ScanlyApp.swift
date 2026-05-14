@@ -4,7 +4,6 @@
 
 import SwiftUI
 
-@main
 struct ScanlyApp: App {
 	@State private var dependencies = AppDependencies()
 	@State private var coordinator = AppCoordinator()
