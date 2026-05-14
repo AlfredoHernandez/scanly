@@ -216,6 +216,7 @@ The history feature described in §3.3 is not yet implemented. This entry locks 
 ```swift
 @Model
 final class ScanHistoryEntry {
+    var id: UUID                    // captured from ScanResult.id; immutable on upsert; drives SwiftUI list-diff stability
     @Attribute(.unique) var rawContent: String
     var typeDiscriminator: String   // QRType.discriminator
     var format: String              // BarcodeFormat.rawValue — display only, not a parser input

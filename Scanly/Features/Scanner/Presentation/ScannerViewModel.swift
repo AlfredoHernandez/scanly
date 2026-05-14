@@ -18,7 +18,6 @@ final class ScannerViewModel {
 	}
 
 	private(set) var state: State = .idle
-	var latestResult: ScanResult?
 	private(set) var isDetectingCode = false
 	var isTorchOn = false
 	/// Bounding box of the most recently committed live-camera scan, in
@@ -28,6 +27,15 @@ final class ScannerViewModel {
 	/// (§10.1.4). `nil` for image-picker submissions, which have no
 	/// AVFoundation source to project from.
 	private(set) var lastDetectionBounds: CGRect?
+
+	/// Result-sheet presentation and history-persistence side-effect
+	/// per §10.2. The VM hands accepted scans to `coordinator.present(_:)`
+	/// and never touches `latestResult` or the repository directly —
+	/// keeping the pipeline focused on scanner state and isolating the
+	/// persistence seam to a single call-site. Module-internal so
+	/// `ScannerView` can build a `Binding` against the coordinator's
+	/// `latestResult` for `.sheet(item:)`.
+	let coordinator: ScanResultCoordinator
 
 	private let scanner: QRScanning
 	private let torch: TorchControlling
@@ -89,6 +97,7 @@ final class ScannerViewModel {
 		haptics: HapticFeedbackControlling,
 		sound: DetectionSoundPlaying,
 		settings: ScannerSettingsReading,
+		coordinator: ScanResultCoordinator,
 		clock: @escaping @Sendable () -> Date,
 		parser: QRContentParsing = QRContentParser(),
 		sleeper: Sleeper = TaskSleeper(),
@@ -100,6 +109,7 @@ final class ScannerViewModel {
 		self.haptics = haptics
 		self.sound = sound
 		self.settings = settings
+		self.coordinator = coordinator
 		self.parser = parser
 		self.clock = clock
 		self.sleeper = sleeper
@@ -123,7 +133,7 @@ final class ScannerViewModel {
 		// burning the camera and skipping the dismissal/cooldown cycle
 		// that owns the legitimate resume path. `didDismissResult()`
 		// brings the scanner back online once the user actually dismisses.
-		guard latestResult == nil else { return }
+		guard coordinator.latestResult == nil else { return }
 		switch state {
 		case .starting, .scanning:
 			return
@@ -189,7 +199,7 @@ final class ScannerViewModel {
 	func stop() {
 		restartRequestedAfterStop = false
 		cancelDetectionHighlight()
-		if latestResult == nil {
+		if coordinator.latestResult == nil {
 			isPausedForResult = false
 			preservedTorchState = false
 			lastPresentedContent = nil
@@ -245,18 +255,21 @@ final class ScannerViewModel {
 	}
 
 	private func commit(content raw: String, format: BarcodeFormat, bounds: CGRect?) {
-		guard latestResult == nil else { return }
+		guard coordinator.latestResult == nil else { return }
 		let content = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !content.isEmpty else { return }
 		guard !cooldown.shouldSuppress(content) else { return }
 
 		let type = parser.parse(content)
-		latestResult = ScanResult(
+		// Persisting + publishing is the coordinator's job — VM only
+		// builds the value and hands it off. Save failures are logged
+		// in the coordinator; the sheet still appears.
+		coordinator.present(ScanResult(
 			rawContent: content,
 			type: type,
 			format: format,
 			scannedAt: clock(),
-		)
+		))
 		lastPresentedContent = content
 		if let bounds {
 			showDetectionHighlight(bounds: bounds)

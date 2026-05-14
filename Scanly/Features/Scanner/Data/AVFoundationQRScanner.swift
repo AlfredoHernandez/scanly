@@ -24,6 +24,7 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	/// Retained across stop/start so the ROI is re-applied on every
 	/// `start()` without requiring the view to re-publish a layout change.
 	private var lastLayerROI: CGRect?
+	private let lifecycle: SessionLifecycleSerializer
 	private let roiPusher: LastWriterWinsPusher<CGRect>
 	private let focusPusher: LastWriterWinsPusher<CGPoint>
 	private let zoomPusher: LastWriterWinsPusher<CGFloat>
@@ -48,6 +49,10 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 		maxZoomFactor = min(deviceMax, Self.uiMaxZoomFactor)
 		let core = SessionCore(session: session, queue: queue)
 		self.core = core
+		lifecycle = SessionLifecycleSerializer(
+			onStart: { [core] in try await core.start() },
+			onStop: { [core] in await core.stop() },
+		)
 		roiPusher = LastWriterWinsPusher { [core] rect in
 			await core.setRectOfInterest(rect)
 		}
@@ -79,7 +84,7 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	}
 
 	func start() async throws {
-		try await core.start()
+		try await lifecycle.start()
 		// Re-push after every start: the first layout-driven push may have
 		// happened before the preview layer was connected to a configured
 		// session, so `metadataOutputRectConverted` returned `.null` and we
@@ -88,7 +93,7 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	}
 
 	func stop() {
-		Task { [core] in await core.stop() }
+		lifecycle.stop()
 	}
 
 	func setRegionOfInterest(_ layerRect: CGRect) {
