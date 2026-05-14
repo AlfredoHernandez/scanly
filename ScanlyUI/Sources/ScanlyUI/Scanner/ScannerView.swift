@@ -342,18 +342,6 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 	var isDetectionSoundEnabled = false
 }
 
-@MainActor
-private final class PreviewScanHistoryRepository: ScanHistoryRepository {
-	func save(_: ScanResult) throws {}
-	func all() throws -> [ScanResult] {
-		[]
-	}
-
-	func delete(_: ScanResult) throws {}
-	func delete(_: [ScanResult]) throws {}
-	func deleteAll() throws {}
-}
-
 #Preview {
 	let stub = PreviewScannerStub()
 	let coordinator = ScanResultCoordinator(repository: PreviewScanHistoryRepository())

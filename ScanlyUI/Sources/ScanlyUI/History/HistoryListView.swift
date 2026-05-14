@@ -174,36 +174,12 @@ private struct HistoryRow: View {
 	}
 }
 
-@MainActor
-private final class PreviewScanHistoryRepository: ScanHistoryRepository {
-	private var rows: [ScanResult] = [
-		ScanResult(rawContent: "https://apple.com", type: .url(URL(string: "https://apple.com")!), format: .qr, scannedAt: Date(timeIntervalSinceNow: -60)),
+#Preview {
+	let appleURL = URL(string: "https://apple.com")!
+	let seed = [
+		ScanResult(rawContent: "https://apple.com", type: .url(appleURL), format: .qr, scannedAt: Date(timeIntervalSinceNow: -60)),
 		ScanResult(rawContent: "tel:+15551234567", type: .phone("+15551234567"), format: .qr, scannedAt: Date(timeIntervalSinceNow: -3600)),
 		ScanResult(rawContent: "lunch at noon", type: .text("lunch at noon"), format: .qr, scannedAt: Date(timeIntervalSinceNow: -86400)),
 	]
-
-	func save(_ result: ScanResult) throws {
-		rows.append(result)
-	}
-
-	func all() throws -> [ScanResult] {
-		rows.sorted { $0.scannedAt > $1.scannedAt }
-	}
-
-	func delete(_ entry: ScanResult) throws {
-		rows.removeAll { $0.rawContent == entry.rawContent }
-	}
-
-	func delete(_ entries: [ScanResult]) throws {
-		let keys = Set(entries.map(\.rawContent))
-		rows.removeAll { keys.contains($0.rawContent) }
-	}
-
-	func deleteAll() throws {
-		rows.removeAll()
-	}
-}
-
-#Preview {
-	HistoryListView(viewModel: HistoryViewModel(repository: PreviewScanHistoryRepository()))
+	HistoryListView(viewModel: HistoryViewModel(repository: PreviewScanHistoryRepository(seed: seed)))
 }
