@@ -5,10 +5,9 @@
 import AVFoundation
 import PhotosUI
 import ScanlyEngine
-import ScanlyUI
 import SwiftUI
 
-struct ScannerView: View {
+public struct ScannerView: View {
 	@State private var viewModel: ScannerViewModel
 	@State private var focusIndicator: FocusIndicatorState?
 	@State private var focusIndicatorHideTask: Task<Void, Never>?
@@ -22,7 +21,7 @@ struct ScannerView: View {
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
 
-	init(
+	public init(
 		viewModel: ScannerViewModel,
 		previewProvider: any CameraPreviewProviding,
 		cameraControls: any CameraControlling,
@@ -34,7 +33,7 @@ struct ScannerView: View {
 		self.imageDetector = imageDetector
 	}
 
-	var body: some View {
+	public var body: some View {
 		// Pull the coordinator from the live view-model on every body
 		// re-evaluation rather than capturing it once in `init`.
 		// SwiftUI may re-create the view struct on parent re-renders;

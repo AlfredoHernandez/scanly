@@ -3,14 +3,17 @@
 //
 
 import ScanlyEngine
-import ScanlyUI
 import SwiftUI
 
-struct ScanResultSheet: View {
-	let result: ScanResult
+public struct ScanResultSheet: View {
+	private let result: ScanResult
 	@Environment(\.dismiss) private var dismiss
 
-	var body: some View {
+	public init(result: ScanResult) {
+		self.result = result
+	}
+
+	public var body: some View {
 		NavigationStack {
 			ScanResultDetailContent(result: result)
 				.navigationTitle("scanner.result.title")

@@ -37,7 +37,7 @@ struct QRTypeInspectorTests {
 			.localized("scanner.result.wifi.security", value: "WPA/WPA2/WPA3"),
 			.localized(
 				"scanner.result.wifi.hidden",
-				value: String(localized: "scanner.result.wifi.hidden.yes"),
+				value: String(localized: "scanner.result.wifi.hidden.yes", bundle: ScanlyEngineResources.bundle),
 			),
 		])
 	}
@@ -48,7 +48,7 @@ struct QRTypeInspectorTests {
 		let rows = QRType.wifi(credentials).inspectorRows
 		#expect(rows == [
 			.localized("scanner.result.wifi.ssid", value: "Cafe"),
-			.localized("scanner.result.wifi.security", value: String(localized: "scanner.result.wifi.security.none")),
+			.localized("scanner.result.wifi.security", value: String(localized: "scanner.result.wifi.security.none", bundle: ScanlyEngineResources.bundle)),
 		])
 	}
 

@@ -15,7 +15,11 @@ let package = Package(
 		.package(name: "ScanlyEngine", path: "../ScanlyEngine"),
 	],
 	targets: [
-		.target(name: "ScanlyUI", dependencies: ["ScanlyEngine"]),
+		.target(
+			name: "ScanlyUI",
+			dependencies: ["ScanlyEngine"],
+			resources: [.process("Resources")],
+		),
 		.testTarget(
 			name: "ScanlyUITests",
 			dependencies: [

@@ -3,7 +3,6 @@
 //
 
 import ScanlyEngine
-import ScanlyUI
 import SwiftData
 import SwiftUI
 
@@ -19,16 +18,16 @@ import SwiftUI
 /// - Edit toolbar → multi-select + "Delete" toolbar button
 /// - Menu toolbar → "Clear history" with a confirmation dialog
 /// - `.searchable` → query routes through `HistorySearch`
-struct HistoryListView: View {
+public struct HistoryListView: View {
 	@State private var viewModel: HistoryViewModel
 	@State private var editMode: EditMode = .inactive
 	@State private var isClearAllPresented = false
 
-	init(viewModel: HistoryViewModel) {
+	public init(viewModel: HistoryViewModel) {
 		_viewModel = State(wrappedValue: viewModel)
 	}
 
-	var body: some View {
+	public var body: some View {
 		@Bindable var viewModel = viewModel
 		NavigationStack {
 			content

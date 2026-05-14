@@ -74,7 +74,7 @@ public nonisolated extension QRType {
 		if credentials.isHidden {
 			rows.append(.localized(
 				"scanner.result.wifi.hidden",
-				value: String(localized: "scanner.result.wifi.hidden.yes"),
+				value: String(localized: "scanner.result.wifi.hidden.yes", bundle: .module),
 			))
 		}
 		return rows
@@ -113,7 +113,7 @@ public nonisolated extension WiFiSecurity {
 
 		case .wep: "WEP"
 
-		case .none: String(localized: "scanner.result.wifi.security.none")
+		case .none: String(localized: "scanner.result.wifi.security.none", bundle: .module)
 		}
 	}
 }
