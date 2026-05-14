@@ -95,6 +95,14 @@ public struct ScannerView: View {
 		} message: { message in
 			Text(message)
 		}
+		.onDisappear {
+			// `@State`-stored Tasks are not auto-cancelled when the view
+			// is removed. If the scanner is ever embedded in a flow that
+			// can dismiss it, the trailing animation closures would
+			// mutate state on a vanished view.
+			zoomIndicatorHideTask?.cancel()
+			focusIndicatorHideTask?.cancel()
+		}
 	}
 
 	private func loadAndDetect(_ item: PhotosPickerItem) async {
