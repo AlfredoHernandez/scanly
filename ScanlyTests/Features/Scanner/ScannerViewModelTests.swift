@@ -146,7 +146,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		let result = try #require(sut.latestResult)
+		let result = try #require(sut.coordinator.latestResult)
 		#expect(result.rawContent == "https://example.com")
 		guard case .url = result.type else {
 			Issue.record("Expected .url, got \(result.type)")
@@ -159,7 +159,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("1234567890128", format: .ean13)
-		let result = try #require(sut.latestResult)
+		let result = try #require(sut.coordinator.latestResult)
 		#expect(result.format == .ean13)
 	}
 
@@ -169,7 +169,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: { fixed })
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		let result = try #require(sut.latestResult)
+		let result = try #require(sut.coordinator.latestResult)
 		#expect(result.scannedAt == fixed)
 	}
 
@@ -178,7 +178,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("")
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult == nil)
 	}
 
 	@Test
@@ -186,7 +186,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("   \n\t  ")
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult == nil)
 	}
 
 	@Test
@@ -195,7 +195,7 @@ struct ScannerViewModelTests {
 		await sut.start()
 		sut.stop()
 		env.scanner.simulateScan("https://example.com")
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult == nil)
 	}
 
 	@Test
@@ -209,7 +209,7 @@ struct ScannerViewModelTests {
 		sut.stop()
 
 		env.scanner.simulateScan("https://example.com")
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult == nil)
 
 		gate.open()
 		await starting
@@ -220,9 +220,9 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("hello")
-		#expect(sut.latestResult != nil)
-		sut.latestResult = nil
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult != nil)
+		sut.coordinator.latestResult = nil
+		#expect(sut.coordinator.latestResult == nil)
 	}
 
 	// MARK: - Scan gating
@@ -233,11 +233,11 @@ struct ScannerViewModelTests {
 		await sut.start()
 
 		env.scanner.simulateScan("https://example.com")
-		let first = sut.latestResult
+		let first = sut.coordinator.latestResult
 		env.scanner.simulateScan("https://other.com")
 
-		#expect(sut.latestResult?.id == first?.id, "New scans must not clobber a pending result")
-		#expect(sut.latestResult?.rawContent == "https://example.com")
+		#expect(sut.coordinator.latestResult?.id == first?.id, "New scans must not clobber a pending result")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://example.com")
 	}
 
 	@Test
@@ -246,12 +246,12 @@ struct ScannerViewModelTests {
 		await sut.start()
 
 		env.scanner.simulateScan("https://example.com")
-		let firstID = sut.latestResult?.id
+		let firstID = sut.coordinator.latestResult?.id
 		for _ in 0 ..< 20 {
 			env.scanner.simulateScan("https://example.com")
 		}
 
-		#expect(sut.latestResult?.id == firstID, "Held-in-frame duplicates must not reset the pending result")
+		#expect(sut.coordinator.latestResult?.id == firstID, "Held-in-frame duplicates must not reset the pending result")
 	}
 
 	// Same-content and different-content rescan-after-dismissal are now
@@ -265,15 +265,15 @@ struct ScannerViewModelTests {
 	func `submit commits an external scan when idle`() {
 		let (sut, _) = makeSUT()
 		sut.submit(content: "https://example.com", format: .qr)
-		#expect(sut.latestResult?.rawContent == "https://example.com")
-		#expect(sut.latestResult?.format == .qr)
+		#expect(sut.coordinator.latestResult?.rawContent == "https://example.com")
+		#expect(sut.coordinator.latestResult?.format == .qr)
 	}
 
 	@Test
 	func `submit uses the provided format on the result`() {
 		let (sut, _) = makeSUT()
 		sut.submit(content: "1234567890128", format: .ean13)
-		#expect(sut.latestResult?.format == .ean13)
+		#expect(sut.coordinator.latestResult?.format == .ean13)
 	}
 
 	@Test
@@ -281,14 +281,14 @@ struct ScannerViewModelTests {
 		let (sut, _) = makeSUT()
 		sut.submit(content: "https://first.com", format: .qr)
 		sut.submit(content: "https://second.com", format: .qr)
-		#expect(sut.latestResult?.rawContent == "https://first.com")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://first.com")
 	}
 
 	@Test
 	func `submit with empty content is ignored`() {
 		let (sut, _) = makeSUT()
 		sut.submit(content: "   \n\t  ", format: .qr)
-		#expect(sut.latestResult == nil)
+		#expect(sut.coordinator.latestResult == nil)
 	}
 
 	@Test
@@ -306,7 +306,7 @@ struct ScannerViewModelTests {
 
 		sut.submit(content: "https://from.image", format: .qr)
 
-		#expect(sut.latestResult?.rawContent == "https://from.image")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://from.image")
 		#expect(sut.state == .idle, "Commit pauses the session so the result sheet has exclusive use of the screen")
 	}
 
@@ -602,7 +602,7 @@ struct ScannerViewModelTests {
 		let callsAfterPause = env.torch.calls.count
 
 		env.torch.torchError = nil
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(env.torch.calls.count == callsAfterPause, "Dismissal must not 'restore' a torch that never disabled")
@@ -618,7 +618,7 @@ struct ScannerViewModelTests {
 		env.scanner.simulateScan("https://example.com")
 		#expect(env.scanner.startCallCount == 1)
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(env.scanner.startCallCount == 2, "Dismissal must re-enter the scanner so live detection resumes")
@@ -633,7 +633,7 @@ struct ScannerViewModelTests {
 		env.scanner.simulateScan("https://example.com")
 		#expect(sut.isTorchOn == false, "Torch is forced off while paused")
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == true, "Torch must be restored to its pre-presentation state")
@@ -647,7 +647,7 @@ struct ScannerViewModelTests {
 		env.scanner.simulateScan("https://example.com")
 		let priorCallCount = env.torch.calls.count
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == false)
@@ -675,7 +675,7 @@ struct ScannerViewModelTests {
 		let callsAfterPause = env.torch.calls.count
 
 		env.scanner.startError = QRScannerError.cameraUnavailable
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(sut.isTorchOn == false, "Torch must not be re-enabled when the restart failed")
@@ -694,7 +694,7 @@ struct ScannerViewModelTests {
 		sut.stop()
 		let startCallsBefore = env.scanner.startCallCount
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(env.scanner.startCallCount == startCallsBefore + 1, "Dismissal must restart the scanner after a backgrounded sheet")
@@ -710,7 +710,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		#expect(sut.latestResult != nil)
+		#expect(sut.coordinator.latestResult != nil)
 		let priorStarts = env.scanner.startCallCount
 
 		await sut.start()
@@ -725,7 +725,7 @@ struct ScannerViewModelTests {
 		// VM stays in .idle: image-picker path can submit before start().
 		sut.submit(content: "https://from.image", format: .qr)
 
-		#expect(sut.latestResult?.rawContent == "https://from.image")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://from.image")
 		#expect(env.scanner.stopCallCount == 0, "There is nothing to pause when the session is not scanning")
 	}
 
@@ -739,7 +739,7 @@ struct ScannerViewModelTests {
 		sut.submit(content: "https://from.image", format: .qr)
 
 		env.scanner.startError = QRScannerError.cameraUnavailable
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		guard case .failed = sut.state else {
@@ -758,7 +758,7 @@ struct ScannerViewModelTests {
 		sut.submit(content: "https://from.image", format: .qr)
 		#expect(sut.state == .idle)
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(env.scanner.startCallCount == 0, "Dismissal must not start a scanner that was never paused")
@@ -774,13 +774,13 @@ struct ScannerViewModelTests {
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
 		let priorStops = env.scanner.stopCallCount
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 1.0)
 		env.scanner.simulateScan("https://example.com")
 
-		#expect(sut.latestResult == nil, "Cooldown must drop the duplicate detection silently")
+		#expect(sut.coordinator.latestResult == nil, "Cooldown must drop the duplicate detection silently")
 		#expect(env.haptics.playSuccessCallCount == 1, "Suppressed scans must not play a second haptic")
 		#expect(env.scanner.stopCallCount == priorStops, "Suppressed scans must not re-pause the session")
 	}
@@ -791,13 +791,13 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 1.0)
 		env.scanner.simulateScan("https://other.com")
 
-		#expect(sut.latestResult?.rawContent == "https://other.com")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://other.com")
 	}
 
 	@Test
@@ -806,13 +806,13 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 2.5)
 		env.scanner.simulateScan("https://example.com")
 
-		#expect(sut.latestResult?.rawContent == "https://example.com")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://example.com")
 	}
 
 	@Test
@@ -823,13 +823,13 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 1.0)
 		sut.submit(content: "https://example.com", format: .qr)
 
-		#expect(sut.latestResult == nil, "Image-picker submissions of the just-dismissed content are suppressed too")
+		#expect(sut.coordinator.latestResult == nil, "Image-picker submissions of the just-dismissed content are suppressed too")
 	}
 
 	@Test
@@ -840,13 +840,13 @@ struct ScannerViewModelTests {
 		let clock = TestClock()
 		let (sut, _) = makeSUT(clock: clock.now)
 		sut.submit(content: "https://from.image", format: .qr)
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 1.0)
 		sut.submit(content: "https://from.image", format: .qr)
 
-		#expect(sut.latestResult == nil, "Cooldown must apply even when the originating commit never paused the session")
+		#expect(sut.coordinator.latestResult == nil, "Cooldown must apply even when the originating commit never paused the session")
 	}
 
 	@Test
@@ -857,7 +857,7 @@ struct ScannerViewModelTests {
 
 		env.scanner.simulateScan("https://example.com")
 
-		#expect(sut.latestResult?.rawContent == "https://example.com", "Initial cooldown state must allow everything through")
+		#expect(sut.coordinator.latestResult?.rawContent == "https://example.com", "Initial cooldown state must allow everything through")
 	}
 
 	@Test
@@ -872,13 +872,13 @@ struct ScannerViewModelTests {
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
 		sut.stop()
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 0.5)
 		env.scanner.simulateScan("https://example.com")
 
-		#expect(sut.latestResult == nil, "Cooldown is anchored at dismissal time, not at the last live-running moment")
+		#expect(sut.coordinator.latestResult == nil, "Cooldown is anchored at dismissal time, not at the last live-running moment")
 	}
 
 	// MARK: - Visual detection highlight (§10.1.4)
@@ -912,7 +912,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com", bounds: CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2))
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		clock.advance(by: 1.0)
@@ -962,7 +962,7 @@ struct ScannerViewModelTests {
 		env.scanner.simulateScan("https://example.com")
 		#expect(sut.lastDetectionBounds != nil)
 
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
 		#expect(sut.lastDetectionBounds == nil, "Dismissal must wipe the highlight so a re-presentation starts clean")
@@ -1022,7 +1022,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT(clock: clock.now, settings: settings)
 		await sut.start()
 		env.scanner.simulateScan("https://example.com")
-		sut.latestResult = nil
+		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 		let priorCount = env.sound.playDetectionSoundCallCount
 
@@ -1081,6 +1081,8 @@ struct ScannerViewModelTests {
 		let torch = TorchSpy()
 		let haptics = HapticFeedbackSpy()
 		let sound = DetectionSoundPlayingSpy()
+		let repository = InMemoryScanHistoryRepository()
+		let coordinator = ScanResultCoordinator(repository: repository)
 		// Default to a `ControllableSleeper` so commit-spawned highlight
 		// tasks never escape the test as live 250ms waits. Tests that
 		// observe the auto-clear pass their own sleeper and release it
@@ -1092,6 +1094,7 @@ struct ScannerViewModelTests {
 			haptics: haptics,
 			sound: sound,
 			settings: settings,
+			coordinator: coordinator,
 			clock: clock,
 			sleeper: resolvedSleeper,
 			cooldownWindow: cooldownWindow,
@@ -1103,6 +1106,8 @@ struct ScannerViewModelTests {
 			haptics: haptics,
 			sound: sound,
 			settings: settings,
+			coordinator: coordinator,
+			repository: repository,
 		)
 		return (sut, env)
 	}
@@ -1119,6 +1124,8 @@ struct ScannerViewModelTests {
 		let haptics: HapticFeedbackSpy
 		let sound: DetectionSoundPlayingSpy
 		let settings: ScannerSettingsStub
+		let coordinator: ScanResultCoordinator
+		let repository: InMemoryScanHistoryRepository
 	}
 }
 

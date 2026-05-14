@@ -16,6 +16,7 @@ struct ScannerView: View {
 	@State private var currentZoomFactor: CGFloat = 1
 	@State private var isZooming = false
 	@State private var zoomIndicatorHideTask: Task<Void, Never>?
+	private let coordinator: ScanResultCoordinator
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
@@ -28,13 +29,14 @@ struct ScannerView: View {
 		imageDetector: any ImageBarcodeDetecting,
 	) {
 		_viewModel = State(wrappedValue: viewModel)
+		coordinator = viewModel.coordinator
 		self.previewProvider = previewProvider
 		self.cameraControls = cameraControls
 		self.imageDetector = imageDetector
 	}
 
 	var body: some View {
-		@Bindable var viewModel = viewModel
+		@Bindable var coordinator = coordinator
 		ZStack {
 			CameraPreviewView(previewLayer: previewProvider.previewLayer)
 				.ignoresSafeArea()
@@ -80,12 +82,12 @@ struct ScannerView: View {
 		.onDisappear {
 			viewModel.stop()
 		}
-		.sheet(item: $viewModel.latestResult) { result in
+		.sheet(item: $coordinator.latestResult) { result in
 			ScanResultSheet(result: result)
 				.presentationDetents([.height(220), .medium, .large])
 				.presentationBackground(.thinMaterial)
 		}
-		.onChange(of: viewModel.latestResult) { oldValue, newValue in
+		.onChange(of: coordinator.latestResult) { oldValue, newValue in
 			guard oldValue != nil, newValue == nil else { return }
 			Task { await viewModel.didDismissResult() }
 		}
@@ -344,8 +346,24 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 	var isDetectionSoundEnabled = false
 }
 
+@MainActor
+private final class PreviewScanHistoryRepository: ScanHistoryRepository {
+	func save(_: ScanResult) throws {}
+	func all() throws -> [ScanResult] {
+		[]
+	}
+
+	func delete(_: ScanResult) throws {}
+	func delete(_: [ScanResult]) throws {}
+	func deleteAll() throws {}
+	func search(query _: String) throws -> [ScanResult] {
+		[]
+	}
+}
+
 #Preview {
 	let stub = PreviewScannerStub()
+	let coordinator = ScanResultCoordinator(repository: PreviewScanHistoryRepository())
 	return ScannerView(
 		viewModel: ScannerViewModel(
 			scanner: stub,
@@ -353,6 +371,7 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 			haptics: PreviewHapticFeedback(),
 			sound: PreviewDetectionSound(),
 			settings: PreviewScannerSettings(),
+			coordinator: coordinator,
 			clock: Date.init,
 		),
 		previewProvider: stub,
