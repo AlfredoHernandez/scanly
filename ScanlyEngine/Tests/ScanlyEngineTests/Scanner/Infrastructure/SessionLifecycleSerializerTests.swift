@@ -11,8 +11,7 @@ import Testing
 struct SessionLifecycleSerializerTests {
 	@Test
 	func `start invokes onStart when no stop is pending`() async throws {
-		let lifecycle = LifecycleSpy()
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
+		let (sut, lifecycle) = makeSUT()
 
 		try await sut.start()
 
@@ -21,8 +20,7 @@ struct SessionLifecycleSerializerTests {
 
 	@Test
 	func `stop schedules onStop without blocking the caller`() async throws {
-		let lifecycle = LifecycleSpy()
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
+		let (sut, lifecycle) = makeSUT()
 
 		sut.stop()
 
@@ -39,9 +37,8 @@ struct SessionLifecycleSerializerTests {
 		// in the gap and flipped `desiredRunning` off, and start bailed.
 		// The serializer must guarantee stop's full completion happens
 		// before onStart is invoked.
-		let lifecycle = LifecycleSpy()
+		let (sut, lifecycle) = makeSUT()
 		lifecycle.holdStop = true
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
 
 		sut.stop()
 		try await waitUntil { lifecycle.events == [.stopBegan] }
@@ -68,9 +65,8 @@ struct SessionLifecycleSerializerTests {
 		// layer down. Two stops can run concurrently while parked,
 		// so the only deterministic invariant is "every stop fully
 		// completes before onStart runs."
-		let lifecycle = LifecycleSpy()
+		let (sut, lifecycle) = makeSUT()
 		lifecycle.holdStop = true
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
 
 		sut.stop()
 		try await waitUntil { lifecycle.events == [.stopBegan] }
@@ -96,8 +92,7 @@ struct SessionLifecycleSerializerTests {
 		// invoking `stop()` before any `start()`. The serializer
 		// must await **both** — tracking only the latest would
 		// leave the earlier stop's actor message racing with start.
-		let lifecycle = LifecycleSpy()
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
+		let (sut, lifecycle) = makeSUT()
 
 		sut.stop()
 		sut.stop()
@@ -109,9 +104,8 @@ struct SessionLifecycleSerializerTests {
 
 	@Test
 	func `start propagates errors from onStart`() async {
-		let lifecycle = LifecycleSpy()
+		let (sut, lifecycle) = makeSUT()
 		lifecycle.startError = anyError()
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
 
 		await #expect(throws: NSError.self) {
 			try await sut.start()
@@ -123,10 +117,9 @@ struct SessionLifecycleSerializerTests {
 		// Stop must drain regardless of how start finishes; otherwise
 		// a failed start could leak a pending-stop reference that the
 		// next start drains pointlessly.
-		let lifecycle = LifecycleSpy()
+		let (sut, lifecycle) = makeSUT()
 		lifecycle.startError = anyError()
 		lifecycle.holdStop = true
-		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
 
 		sut.stop()
 		try await waitUntil { lifecycle.events == [.stopBegan] }
@@ -139,9 +132,17 @@ struct SessionLifecycleSerializerTests {
 		}
 		#expect(lifecycle.events == [.stopBegan, .stopEnded])
 	}
+
+	// MARK: - Helpers
+
+	private func makeSUT() -> (sut: SessionLifecycleSerializer, lifecycle: LifecycleSpy) {
+		let lifecycle = LifecycleSpy()
+		let sut = SessionLifecycleSerializer(onStart: lifecycle.start, onStop: lifecycle.stop)
+		return (sut, lifecycle)
+	}
 }
 
-// MARK: - Helpers
+// MARK: - Test doubles
 
 @MainActor
 private final class LifecycleSpy {

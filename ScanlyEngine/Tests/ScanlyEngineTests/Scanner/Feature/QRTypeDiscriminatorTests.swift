@@ -12,10 +12,10 @@ struct QRTypeDiscriminatorTests {
 	enum Case: String, CaseIterable {
 		case url, wifi, contact, phone, email, sms, location, text
 
-		var sut: QRType {
+		func makeSUT() throws -> QRType {
 			switch self {
 			case .url:
-				.url(URL(string: "https://example.com/secret?token=abc")!)
+				try .url(#require(URL(string: "https://example.com/secret?token=abc")))
 
 			case .wifi:
 				.wifi(WiFiCredentials(ssid: "Home", password: "hunter2", security: .wpa, isHidden: false))
@@ -42,8 +42,8 @@ struct QRTypeDiscriminatorTests {
 	}
 
 	@Test(arguments: Case.allCases)
-	func `discriminator matches case name`(testCase: Case) {
-		#expect(testCase.sut.discriminator == testCase.rawValue)
+	func `discriminator matches case name`(testCase: Case) throws {
+		try #expect(testCase.makeSUT().discriminator == testCase.rawValue)
 	}
 
 	@Test

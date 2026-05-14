@@ -10,18 +10,18 @@ import Testing
 
 struct DetectionStateEmitterTests {
 	@Test
-	func `first observation emits a leading true`() async {
+	func `first observation emits a leading true`() async throws {
 		let (sut, sleeper, recorder) = makeSUT()
 		await sut.noteObservation()
-		try? await sleeper.waitForSleep()
+		try await sleeper.waitForSleep()
 		#expect(recorder.changes == [true])
 	}
 
 	@Test
-	func `elapsed idle timeout emits a trailing false`() async {
+	func `elapsed idle timeout emits a trailing false`() async throws {
 		let (sut, sleeper, recorder) = makeSUT()
 		await sut.noteObservation()
-		try? await sleeper.waitForSleep()
+		try await sleeper.waitForSleep()
 		sleeper.resumeAll()
 		await recorder.waitForChangeCount(2)
 		#expect(recorder.changes == [true, false])
@@ -95,7 +95,7 @@ struct DetectionStateEmitterTests {
 
 	// MARK: - Helpers
 
-	private func makeSUT() -> (DetectionStateEmitter, ControllableSleeper, ChangeRecorder) {
+	private func makeSUT() -> (sut: DetectionStateEmitter, sleeper: ControllableSleeper, recorder: ChangeRecorder) {
 		let sleeper = ControllableSleeper()
 		let recorder = ChangeRecorder()
 		let sut = DetectionStateEmitter(
