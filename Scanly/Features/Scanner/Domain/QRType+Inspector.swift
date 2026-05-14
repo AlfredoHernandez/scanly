@@ -28,8 +28,8 @@ nonisolated extension QRType {
 
 		case let .location(latitude, longitude):
 			[
-				.localized("scanner.result.location.latitude", value: Self.formatCoordinate(latitude)),
-				.localized("scanner.result.location.longitude", value: Self.formatCoordinate(longitude)),
+				.localized("scanner.result.location.latitude", value: CoordinateFormatter.format(latitude)),
+				.localized("scanner.result.location.longitude", value: CoordinateFormatter.format(longitude)),
 			]
 
 		case .contact, .text:
@@ -101,10 +101,6 @@ nonisolated extension QRType {
 			rows.append(.localized("scanner.result.sms.body", value: body))
 		}
 		return rows
-	}
-
-	private static func formatCoordinate(_ value: Double) -> String {
-		value.formatted(.number.precision(.fractionLength(0 ... 6)))
 	}
 }
 

@@ -6,7 +6,9 @@
 import Foundation
 import Testing
 
-@MainActor
+/// `HistorySearch` is `nonisolated`, so the suite has no actor
+/// isolation either — tests can run on any executor and the framework
+/// is free to parallelise them.
 struct HistorySearchTests {
 	// MARK: - Query handling
 
@@ -188,6 +190,18 @@ struct HistorySearchTests {
 		let inputs = [phoneResult(number: "+15551234567", rawContent: "tel:+15551234567")]
 
 		#expect(HistorySearch.filter(inputs, query: "555").count == 1)
+	}
+
+	@Test
+	func `phone does not match by tel: scheme prefix even though it is in rawContent`() {
+		// `rawContent` for a phone payload is `"tel:+<number>"`. The
+		// indexed value is the number alone — typing `"tel:"` must
+		// not surface every phone row in the store. This pairs with
+		// the URL/Wi-Fi/email exclusion tests above: every structured
+		// type keeps a literal rawContent prefix out of search.
+		let inputs = [phoneResult(number: "+15551234567", rawContent: "tel:+15551234567")]
+
+		#expect(HistorySearch.filter(inputs, query: "tel:").isEmpty, "Phone scheme prefix is not an indexed field per §10.2.5")
 	}
 
 	// MARK: - .location type — formatted coordinates are matched

@@ -215,19 +215,25 @@ struct InMemoryScanHistoryRepositoryTests {
 
 	@Test
 	func `search by raw content substring returns the row`() throws {
+		// Use plaintext rawContent so the rawContent IS what gets
+		// indexed — `.text(rawContent)` (the default) routes through
+		// `HistorySearch`'s text branch. A URL-shaped rawContent
+		// would index its parsed host instead of the literal text,
+		// which is a different code path and not what this test
+		// claims to exercise.
 		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "https://example.com"))
-		try sut.save(anyResult(rawContent: "https://other.com"))
+		try sut.save(anyResult(rawContent: "favorite place"))
+		try sut.save(anyResult(rawContent: "another item"))
 
-		#expect(try sut.search(query: "example").map(\.rawContent) == ["https://example.com"])
+		#expect(try sut.search(query: "favorite").map(\.rawContent) == ["favorite place"])
 	}
 
 	@Test
 	func `search on raw content is case-insensitive`() throws {
 		let sut = makeSUT()
-		try sut.save(anyResult(rawContent: "HTTP://EXAMPLE.com"))
+		try sut.save(anyResult(rawContent: "FAVORITE Place"))
 
-		#expect(try sut.search(query: "example").count == 1)
+		#expect(try sut.search(query: "favorite").count == 1)
 	}
 
 	// MARK: - error propagation

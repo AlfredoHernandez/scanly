@@ -191,19 +191,25 @@ struct SwiftDataScanHistoryRepositoryTests {
 
 	@Test
 	func `search by raw content substring returns the row`() throws {
+		// Use plaintext rawContent: the SwiftData impl re-parses
+		// `rawContent` on read via `QRContentParser`, so a URL-shaped
+		// string would surface as `.url(...)` and the match would go
+		// through `HistorySearch`'s host-only branch — a different
+		// code path from what this test claims. Plaintext keeps the
+		// type at `.text(...)`, indexing `rawContent` directly.
 		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "https://example.com"))
-		try sut.save(anyResult(rawContent: "https://other.com"))
+		try sut.save(anyResult(rawContent: "favorite place"))
+		try sut.save(anyResult(rawContent: "another item"))
 
-		#expect(try sut.search(query: "example").map(\.rawContent) == ["https://example.com"])
+		#expect(try sut.search(query: "favorite").map(\.rawContent) == ["favorite place"])
 	}
 
 	@Test
 	func `search on raw content is case-insensitive`() throws {
 		let (sut, _) = try makeSUT()
-		try sut.save(anyResult(rawContent: "HTTP://EXAMPLE.com"))
+		try sut.save(anyResult(rawContent: "FAVORITE Place"))
 
-		#expect(try sut.search(query: "example").count == 1)
+		#expect(try sut.search(query: "favorite").count == 1)
 	}
 
 	// MARK: - SwiftData-specific invariants

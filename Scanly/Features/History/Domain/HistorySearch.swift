@@ -29,8 +29,18 @@ import Foundation
 /// match against them (§10.2.5). For structured types (`.url`,
 /// `.wifi`, `.email`, `.sms`) this means `rawContent` is **not**
 /// matched verbatim — substring matches go through the redacted
-/// per-field index above. `.text` and `.contact` index `rawContent`
-/// because v1.0 has no further breakdown for those payloads.
+/// per-field index above.
+///
+/// `.phone` and `.location` carry no spec-prohibited fields in their
+/// `rawContent` (it's `tel:<number>` / `geo:<lat>,<lng>`), so
+/// excluding rawContent for them is not a privacy decision but a
+/// consistency one: the user-visible searchable value is the number
+/// (or formatted coordinate pair). Indexing the literal `"tel:"` or
+/// `"geo:"` prefix would let those strings surface every row of
+/// their type, which is noise.
+///
+/// `.text` and `.contact` index `rawContent` because v1.0 has no
+/// further breakdown for those payloads.
 nonisolated enum HistorySearch {
 	/// Returns the subset of `results` matching `query` against the
 	/// §10.2.5 field enumeration. An empty / whitespace-only query
@@ -85,12 +95,11 @@ nonisolated enum HistorySearch {
 	}
 
 	private static func formatLocation(latitude: Double, longitude: Double) -> String {
-		// Variable precision up to 6 fraction digits — matches the
-		// inspector's coordinate formatter so what the user reads on
-		// the detail row is also what they type into search.
-		let lat = latitude.formatted(.number.precision(.fractionLength(0 ... 6)))
-		let lng = longitude.formatted(.number.precision(.fractionLength(0 ... 6)))
-		return "\(lat), \(lng)"
+		// Delegate to the shared `CoordinateFormatter` so the indexed
+		// value stays byte-identical to what the inspector shows on
+		// the detail row — typing the visible string into search
+		// must always match it.
+		"\(CoordinateFormatter.format(latitude)), \(CoordinateFormatter.format(longitude))"
 	}
 
 	private static func contains(_ needle: String, in haystack: String) -> Bool {
