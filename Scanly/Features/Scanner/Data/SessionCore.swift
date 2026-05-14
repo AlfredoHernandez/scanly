@@ -2,6 +2,12 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+// `@preconcurrency` is required until AVFoundation completes its Swift 6
+// Sendable audit. The safety invariant that makes the suppression sound:
+// every `AVCaptureSession` / `AVCaptureDevice` / `AVCaptureMetadataOutput`
+// reference owned by this actor is confined to `sessionQueue` via the
+// `unownedExecutor` pin below, so no cross-thread access can occur. Drop
+// `@preconcurrency` once Apple annotates the imported types.
 @preconcurrency import AVFoundation
 import Foundation
 import os
@@ -10,12 +16,24 @@ import os
 /// callback can re-enter via `assumeIsolated` without hopping threads.
 actor SessionCore {
 	enum Event {
-		case scanned(String, format: BarcodeFormat, epoch: Int)
+		/// A QR was decoded from the live camera feed.
+		/// - Parameters:
+		///   - String: the decoded payload (`rawContent`).
+		///   - format: the source barcode format reported by AVFoundation.
+		///   - bounds: the QR's quadrilateral bounding box in
+		///     AVFoundation metadata-output coordinates (normalized
+		///     `[0, 1]`, origin top-left). Higher layers project to
+		///     view-layer coordinates via the preview layer.
+		///   - epoch: the session epoch the event was produced under;
+		///     used by the pump to drop events buffered against a
+		///     session that has since been stopped.
+		case scanned(String, format: BarcodeFormat, bounds: CGRect, epoch: Int)
+		/// The "QR is visible in frame" edge changed.
 		case detectionChanged(Bool, epoch: Int)
 
 		var epoch: Int {
 			switch self {
-			case let .scanned(_, _, epoch), let .detectionChanged(_, epoch): epoch
+			case let .scanned(_, _, _, epoch), let .detectionChanged(_, epoch): epoch
 			}
 		}
 	}
@@ -142,7 +160,7 @@ actor SessionCore {
 		desiredRunning = false
 		let wasRunning = session.isRunning
 		if wasRunning { session.stopRunning() }
-		Task { [detectionEmitter] in await detectionEmitter.reset() }
+		Task { @concurrent [detectionEmitter] in await detectionEmitter.reset() }
 		// Bump the epoch so any events still queued from this session are
 		// dropped by the pump even if no subsequent `start()` ever runs.
 		epochStorage.withLock { $0 += 1 }
@@ -187,9 +205,9 @@ actor SessionCore {
 		}
 		session.addOutput(output)
 
-		let delegate = MetadataDelegate(expectedQueue: sessionQueue) { [weak self] value, format in
+		let delegate = MetadataDelegate(expectedQueue: sessionQueue) { [weak self] value, format, bounds in
 			guard let self else { return }
-			assumeIsolated { $0.handleObservation(value, format: format) }
+			assumeIsolated { $0.handleObservation(value, format: format, bounds: bounds) }
 		}
 		metadataDelegate = delegate
 		output.setMetadataObjectsDelegate(delegate, queue: sessionQueue)
@@ -203,10 +221,10 @@ actor SessionCore {
 		isConfigured = true
 	}
 
-	private func handleObservation(_ value: String, format: BarcodeFormat) {
+	private func handleObservation(_ value: String, format: BarcodeFormat, bounds: CGRect) {
 		let epoch = currentEpoch
-		eventContinuation.yield(.scanned(value, format: format, epoch: epoch))
-		Task { [detectionEmitter] in await detectionEmitter.noteObservation() }
+		eventContinuation.yield(.scanned(value, format: format, bounds: bounds, epoch: epoch))
+		Task { @concurrent [detectionEmitter] in await detectionEmitter.noteObservation() }
 	}
 }
 
@@ -214,9 +232,9 @@ actor SessionCore {
 
 private final nonisolated class MetadataDelegate: NSObject, AVCaptureMetadataOutputObjectsDelegate, Sendable {
 	private let expectedQueue: DispatchQueue
-	private let handler: @Sendable (String, BarcodeFormat) -> Void
+	private let handler: @Sendable (String, BarcodeFormat, CGRect) -> Void
 
-	init(expectedQueue: DispatchQueue, handler: @escaping @Sendable (String, BarcodeFormat) -> Void) {
+	init(expectedQueue: DispatchQueue, handler: @escaping @Sendable (String, BarcodeFormat, CGRect) -> Void) {
 		self.expectedQueue = expectedQueue
 		self.handler = handler
 		super.init()
@@ -235,7 +253,9 @@ private final nonisolated class MetadataDelegate: NSObject, AVCaptureMetadataOut
 		for object in metadataObjects {
 			guard let readable = object as? AVMetadataMachineReadableCodeObject,
 			      let value = readable.stringValue else { continue }
-			handler(value, readable.type.barcodeFormat)
+			// `bounds` is in normalized metadata-output coordinates.
+			// Conversion to preview-layer coordinates is the view's job.
+			handler(value, readable.type.barcodeFormat, readable.bounds)
 			return
 		}
 	}

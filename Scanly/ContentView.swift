@@ -13,6 +13,8 @@ struct ContentView: View {
 				scanner: scanner,
 				torch: scanner,
 				haptics: UIKitHapticFeedback(),
+				sound: SystemSoundDetectionPlayer(),
+				settings: UserDefaultsScannerSettings(defaults: .standard),
 				clock: Date.init,
 			),
 			previewProvider: scanner,

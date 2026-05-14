@@ -10,7 +10,11 @@ import os
 /// releases them on demand. Honors task cancellation so idle-timer
 /// callers that cancel their own task see `CancellationError` just
 /// like they would against the real `Task.sleep`.
-final class ControllableSleeper: Sleeper, @unchecked Sendable {
+///
+/// Marked `nonisolated` so the `@concurrent` `Sleeper.sleep(for:)`
+/// requirement can be satisfied without inheriting the test target's
+/// default MainActor isolation.
+final nonisolated class ControllableSleeper: Sleeper, @unchecked Sendable {
 	struct Call: Equatable {
 		let id: UUID
 		let duration: Duration
@@ -69,6 +73,7 @@ final class ControllableSleeper: Sleeper, @unchecked Sendable {
 		}
 	}
 
+	@concurrent
 	func sleep(for _: Duration) async throws {
 		let id = UUID()
 		try await withTaskCancellationHandler {

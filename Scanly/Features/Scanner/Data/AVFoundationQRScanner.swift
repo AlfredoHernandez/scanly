@@ -2,6 +2,11 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+// `@preconcurrency` is required until AVFoundation completes its Swift 6
+// Sendable audit. Safety invariant: this class is `@MainActor`, so its
+// AVF references (`AVCaptureVideoPreviewLayer`, `AVCaptureDevice`) never
+// cross threads — and every mutating session operation is routed through
+// `SessionCore`, which pins its executor to a private serial queue.
 @preconcurrency import AVFoundation
 
 @MainActor
@@ -10,7 +15,7 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 	let isTorchAvailable: Bool
 	let minZoomFactor: CGFloat
 	let maxZoomFactor: CGFloat
-	var onScan: ((String, BarcodeFormat) -> Void)?
+	var onScan: ((String, BarcodeFormat, CGRect) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 
 	private let core: SessionCore
@@ -59,8 +64,8 @@ final class AVFoundationQRScanner: QRScanning, CameraPreviewProviding, TorchCont
 				// buffered by a session that has since been stopped.
 				guard event.epoch >= core.currentEpoch else { continue }
 				switch event {
-				case let .scanned(value, format, _):
-					onScan?(value, format)
+				case let .scanned(value, format, bounds, _):
+					onScan?(value, format, bounds)
 
 				case let .detectionChanged(detecting, _):
 					onDetectionChange?(detecting)

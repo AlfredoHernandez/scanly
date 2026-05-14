@@ -53,6 +53,8 @@ struct ScannerView: View {
 					.allowsHitTesting(false)
 			}
 
+			detectionHighlight
+
 			overlay
 
 			if isZooming {
@@ -82,6 +84,10 @@ struct ScannerView: View {
 			ScanResultSheet(result: result)
 				.presentationDetents([.height(220), .medium, .large])
 				.presentationBackground(.thinMaterial)
+		}
+		.onChange(of: viewModel.latestResult) { oldValue, newValue in
+			guard oldValue != nil, newValue == nil else { return }
+			Task { await viewModel.didDismissResult() }
 		}
 		.onChange(of: photoPickerItem) { _, newItem in
 			guard let newItem else { return }
@@ -147,6 +153,30 @@ struct ScannerView: View {
 			.padding()
 			.foregroundStyle(.white)
 		}
+	}
+
+	private var detectionHighlight: some View {
+		Group {
+			if let bounds = viewModel.lastDetectionBounds {
+				// `lastDetectionBounds` is in AVFoundation metadata-output
+				// coords. Project to the preview layer's coord space, which
+				// matches this view's local space (the preview layer fills
+				// the ZStack).
+				let layerRect = previewProvider.previewLayer.layerRectConverted(fromMetadataOutputRect: bounds)
+				RoundedRectangle(cornerRadius: 12, style: .continuous)
+					.strokeBorder(Color.green, lineWidth: 4)
+					.frame(width: layerRect.width, height: layerRect.height)
+					.position(x: layerRect.midX, y: layerRect.midY)
+					.shadow(color: .green.opacity(0.6), radius: 8)
+					.transition(.opacity.combined(with: .scale(scale: 1.05)))
+					.allowsHitTesting(false)
+			}
+		}
+		// Animation lives on the parent so SwiftUI animates **both** the
+		// insertion (when bounds becomes non-nil) and the removal (when
+		// it goes back to nil). Putting `.animation(...)` inside the
+		// `if let` branch would only catch the insertion.
+		.animation(.easeOut(duration: 0.15), value: viewModel.lastDetectionBounds)
 	}
 
 	private var scanReticle: some View {
@@ -276,7 +306,7 @@ private struct ZoomIndicator: View {
 @MainActor
 private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, TorchControlling, CameraControlling {
 	let previewLayer = AVCaptureVideoPreviewLayer()
-	var onScan: ((String, BarcodeFormat) -> Void)?
+	var onScan: ((String, BarcodeFormat, CGRect) -> Void)?
 	var onDetectionChange: ((Bool) -> Void)?
 	var isTorchAvailable: Bool {
 		true
@@ -293,8 +323,7 @@ private final class PreviewScannerStub: QRScanning, CameraPreviewProviding, Torc
 	func setZoomFactor(_: CGFloat) {}
 }
 
-@MainActor
-private final class PreviewImageDetector: ImageBarcodeDetecting {
+private struct PreviewImageDetector: ImageBarcodeDetecting {
 	func detect(in _: Data) async throws -> DetectedBarcode? {
 		nil
 	}
@@ -305,6 +334,16 @@ private final class PreviewHapticFeedback: HapticFeedbackControlling {
 	func playSuccess() {}
 }
 
+@MainActor
+private final class PreviewDetectionSound: DetectionSoundPlaying {
+	func playDetectionSound() {}
+}
+
+@MainActor
+private final class PreviewScannerSettings: ScannerSettingsReading {
+	var isDetectionSoundEnabled = false
+}
+
 #Preview {
 	let stub = PreviewScannerStub()
 	return ScannerView(
@@ -312,6 +351,8 @@ private final class PreviewHapticFeedback: HapticFeedbackControlling {
 			scanner: stub,
 			torch: stub,
 			haptics: PreviewHapticFeedback(),
+			sound: PreviewDetectionSound(),
+			settings: PreviewScannerSettings(),
 			clock: Date.init,
 		),
 		previewProvider: stub,
