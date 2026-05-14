@@ -4,6 +4,7 @@
 
 import AVFoundation
 import PhotosUI
+import ScanlyEngine
 import SwiftUI
 
 struct ScannerView: View {

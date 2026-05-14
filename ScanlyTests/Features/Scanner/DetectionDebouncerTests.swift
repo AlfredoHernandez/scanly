@@ -2,7 +2,7 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
-@testable import Scanly
+@testable import ScanlyEngine
 import Testing
 
 struct DetectionDebouncerTests {

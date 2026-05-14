@@ -3,6 +3,7 @@
 //
 
 @testable import Scanly
+@testable import ScanlyEngine
 import Foundation
 import Testing
 

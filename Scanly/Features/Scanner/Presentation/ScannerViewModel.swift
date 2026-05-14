@@ -5,6 +5,7 @@
 import Foundation
 import Observation
 import OSLog
+import ScanlyEngine
 
 @MainActor
 @Observable

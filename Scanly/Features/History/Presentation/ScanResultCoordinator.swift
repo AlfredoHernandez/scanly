@@ -4,6 +4,7 @@
 
 import Observation
 import OSLog
+import ScanlyEngine
 
 /// Owns the result-sheet presentation state and the persistence side-
 /// effect that pairs with it (§10.2). `ScannerViewModel` delegates

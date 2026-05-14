@@ -2,6 +2,7 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+import ScanlyEngine
 import SwiftUI
 
 /// Pushed from `HistoryListView` when the user taps a row. The body

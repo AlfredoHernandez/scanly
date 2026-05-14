@@ -5,6 +5,7 @@
 import Foundation
 import Observation
 import OSLog
+import ScanlyEngine
 
 /// Drives the history list view (§3.3 + §10.2). Loads the persisted
 /// snapshot from `ScanHistoryRepository`, exposes a search-filtered

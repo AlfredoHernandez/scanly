@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5CABBBBB0000000000000006 /* ScanlyUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CABBBBB0000000000000005 /* ScanlyUI */; };
+		5CABBBBB0000000000000008 /* ScanlyUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CABBBBB0000000000000007 /* ScanlyUI */; };
+		5CAEEEEE0000000000000003 /* ScanlyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5CAEEEEE0000000000000002 /* ScanlyEngine */; };
+		5CAEEEEE0000000000000005 /* ScanlyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5CAEEEEE0000000000000004 /* ScanlyEngine */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		384C5BE62F8896C600204CFC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -15,11 +22,6 @@
 			remoteInfo = Scanly;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXBuildFile section */
-		5CAEEEEE0000000000000003 /* ScanlyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5CAEEEEE0000000000000002 /* ScanlyEngine */; };
-		5CABBBBB0000000000000006 /* ScanlyUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CABBBBB0000000000000005 /* ScanlyUI */; };
-/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		384C5BD82F8896C600204CFC /* Scanly.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scanly.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -53,6 +55,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5CAEEEEE0000000000000005 /* ScanlyEngine in Frameworks */,
+				5CABBBBB0000000000000008 /* ScanlyUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -122,6 +126,8 @@
 			);
 			name = ScanlyTests;
 			packageProductDependencies = (
+				5CAEEEEE0000000000000004 /* ScanlyEngine */,
+				5CABBBBB0000000000000007 /* ScanlyUI */,
 			);
 			productName = ScanlyTests;
 			productReference = 384C5BE52F8896C600204CFC /* ScanlyTests.xctest */;
@@ -468,26 +474,36 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ScanlyEngine;
-		};
 		5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ScanlyUI;
 		};
+		5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ScanlyEngine;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5CABBBBB0000000000000005 /* ScanlyUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */;
+			productName = ScanlyUI;
+		};
+		5CABBBBB0000000000000007 /* ScanlyUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */;
+			productName = ScanlyUI;
+		};
 		5CAEEEEE0000000000000002 /* ScanlyEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */;
 			productName = ScanlyEngine;
 		};
-		5CABBBBB0000000000000005 /* ScanlyUI */ = {
+		5CAEEEEE0000000000000004 /* ScanlyEngine */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */;
-			productName = ScanlyUI;
+			package = 5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */;
+			productName = ScanlyEngine;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
