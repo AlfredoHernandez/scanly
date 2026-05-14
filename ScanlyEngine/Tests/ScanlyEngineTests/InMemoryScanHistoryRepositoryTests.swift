@@ -63,7 +63,7 @@ struct InMemoryScanHistoryRepositoryTests {
 		#expect(entry.type == .text("1234567890128"))
 	}
 
-	// MARK: - save() — upsert path (§10.2.2)
+	// MARK: - save() — upsert path
 
 	@Test
 	func `save with existing rawContent collapses to a single row`() throws {
@@ -71,7 +71,7 @@ struct InMemoryScanHistoryRepositoryTests {
 		try sut.save(anyResult(rawContent: "https://example.com", at: timestamp(0)))
 		try sut.save(anyResult(rawContent: "https://example.com", at: timestamp(60)))
 
-		#expect(try sut.all().count == 1, "Same rawContent must collapse to a single row per §10.2.2")
+		#expect(try sut.all().count == 1, "Same rawContent must collapse to a single row")
 	}
 
 	@Test
@@ -85,9 +85,8 @@ struct InMemoryScanHistoryRepositoryTests {
 
 	@Test
 	func `save with existing rawContent preserves the original id`() throws {
-		// The id is the canonical identity of the row; a re-scan must
-		// not reassign it, or the list view would treat every re-scan
-		// as a brand-new item and animate accordingly.
+		// Reassigning id on re-scan would make the list view animate
+		// the row as a brand-new insertion.
 		let sut = makeSUT()
 		let originalID = UUID()
 		try sut.save(anyResult(id: originalID, rawContent: "https://example.com"))
@@ -98,7 +97,6 @@ struct InMemoryScanHistoryRepositoryTests {
 
 	@Test
 	func `save with existing rawContent moves the row to the top of the list`() throws {
-		// §10.2.6: re-scanning an existing entry moves it to the top.
 		let sut = makeSUT()
 		try sut.save(anyResult(rawContent: "a", at: timestamp(0)))
 		try sut.save(anyResult(rawContent: "b", at: timestamp(60)))
@@ -109,12 +107,9 @@ struct InMemoryScanHistoryRepositoryTests {
 
 	@Test
 	func `save with existing rawContent preserves the original type and format`() throws {
-		// The schema fields `typeDiscriminator` and `format` are
-		// captured at the *initial* insert and never overwritten by a
-		// subsequent re-scan. In practice the same `rawContent` parses
-		// to the same `QRType` (the parser is deterministic on
-		// rawContent), but the invariant must hold even if a future
-		// caller hands the repo a different type/format on re-save.
+		// type/format are captured at the initial insert; the invariant
+		// must hold even if a caller hands the repo a different
+		// type/format on re-save.
 		let sut = makeSUT()
 		let initialURL = try #require(URL(string: "https://example.com"))
 		try sut.save(anyResult(rawContent: "https://example.com", type: .url(initialURL), format: .qr))
@@ -135,7 +130,7 @@ struct InMemoryScanHistoryRepositoryTests {
 		#expect(throws: NSError.self) {
 			try sut.save(anyResult())
 		}
-		#expect(try sut.all().isEmpty, "Failed save must not mutate the store — §10.2.1 best-effort contract")
+		#expect(try sut.all().isEmpty, "Failed save must not mutate the store")
 	}
 
 	// MARK: - delete()

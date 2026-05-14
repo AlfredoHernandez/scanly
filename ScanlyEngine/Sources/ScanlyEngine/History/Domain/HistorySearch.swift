@@ -4,13 +4,10 @@
 
 import Foundation
 
-/// Pure search algorithm for the history feature per §10.2.5.
-///
-/// Filters `[ScanResult]` against a user-supplied query, matching only
-/// against the **explicit field enumeration** the spec pins. The match
-/// is case- and diacritic-insensitive.
-///
-/// **Indexed fields per type**
+/// Filters `[ScanResult]` against a user-supplied query. Case- and
+/// diacritic-insensitive. Matches against a narrow per-type field
+/// index — never against payload pieces that would leak privacy
+/// (Wi-Fi passwords, email bodies, URL paths).
 ///
 /// | Type        | Indexed strings                              |
 /// |-------------|----------------------------------------------|
@@ -21,32 +18,10 @@ import Foundation
 /// | `.phone`    | Number                                       |
 /// | `.location` | Formatted "latitude, longitude"              |
 /// | `.text`     | `rawContent`                                 |
-/// | `.contact`  | `rawContent` (full vCard — v1.0 caveat)      |
-///
-/// The exclusion is deliberate: payload pieces like Wi-Fi passwords,
-/// email bodies, and URL paths are visible in the detail-view
-/// inspector but must never surface a history row from a search
-/// match against them (§10.2.5). For structured types (`.url`,
-/// `.wifi`, `.email`, `.sms`) this means `rawContent` is **not**
-/// matched verbatim — substring matches go through the redacted
-/// per-field index above.
-///
-/// `.phone` and `.location` carry no spec-prohibited fields in their
-/// `rawContent` (it's `tel:<number>` / `geo:<lat>,<lng>`), so
-/// excluding rawContent for them is not a privacy decision but a
-/// consistency one: the user-visible searchable value is the number
-/// (or formatted coordinate pair). Indexing the literal `"tel:"` or
-/// `"geo:"` prefix would let those strings surface every row of
-/// their type, which is noise.
-///
-/// `.text` and `.contact` index `rawContent` because v1.0 has no
-/// further breakdown for those payloads.
+/// | `.contact`  | `rawContent` (full vCard — until structured parsing lands) |
 public nonisolated enum HistorySearch {
-	/// Returns the subset of `results` matching `query` against the
-	/// §10.2.5 field enumeration. An empty / whitespace-only query
-	/// returns `results` unchanged; the relative order of survivors
-	/// is preserved (callers sort upstream, typically by
-	/// `lastScannedAt` descending).
+	/// Empty / whitespace-only query returns `results` unchanged;
+	/// relative order is preserved.
 	public static func filter(_ results: [ScanResult], query: String) -> [ScanResult] {
 		let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return results }
@@ -60,10 +35,8 @@ public nonisolated enum HistorySearch {
 	private static func indexedStrings(for result: ScanResult) -> [String] {
 		switch result.type {
 		case let .url(url):
-			// `url.host()` returns the decoded host — what the user
-			// would type into search. Opaque URLs without an
-			// authority (e.g. `data:...`) have `host == nil` and
-			// therefore no derived index.
+			// Opaque URLs without an authority (e.g. `data:...`) have
+			// `host == nil` and therefore no derived index.
 			[url.host()].compactMap(\.self)
 
 		case let .wifi(credentials):
@@ -85,20 +58,15 @@ public nonisolated enum HistorySearch {
 			[result.rawContent]
 
 		case .contact:
-			// v1.0 ships without structured vCard parsing, so the
-			// safest path that still lets the user find a contact by
-			// name / phone / email is to index the rawContent vCard
-			// verbatim. A future iteration that adds vCard
-			// breakdown should narrow this to FN / EMAIL / TEL.
+			// Until vCard parsing lands, index the raw vCard so the
+			// user can still find a contact by name / phone / email.
 			[result.rawContent]
 		}
 	}
 
 	private static func formatLocation(latitude: Double, longitude: Double) -> String {
-		// Delegate to the shared `CoordinateFormatter` so the indexed
-		// value stays byte-identical to what the inspector shows on
-		// the detail row — typing the visible string into search
-		// must always match it.
+		// Must stay byte-identical to the inspector's coordinate row
+		// so typing the visible string into search always matches.
 		"\(CoordinateFormatter.format(latitude)), \(CoordinateFormatter.format(longitude))"
 	}
 

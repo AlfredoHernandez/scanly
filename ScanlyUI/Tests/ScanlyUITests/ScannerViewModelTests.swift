@@ -256,10 +256,9 @@ struct ScannerViewModelTests {
 		#expect(sut.coordinator.latestResult?.id == firstID, "Held-in-frame duplicates must not reset the pending result")
 	}
 
-	// Same-content and different-content rescan-after-dismissal are now
-	// covered explicitly by the post-dismiss cooldown tests in the
-	// `Post-dismiss cooldown (§10.1.3)` section below, with clock control
-	// to position the second scan inside or outside the window.
+	// Rescan-after-dismissal is covered explicitly by the post-dismiss
+	// cooldown tests below, with clock control to position the second
+	// scan inside or outside the window.
 
 	// MARK: - Image submission
 
@@ -522,7 +521,7 @@ struct ScannerViewModelTests {
 		#expect(sut.isTorchOn == true)
 	}
 
-	// MARK: - Result presentation pauses the session (§10.1.2)
+	// MARK: - Result presentation pauses the session
 
 	@Test
 	func `commit pauses the scanner so the session releases the camera`() async {
@@ -611,7 +610,7 @@ struct ScannerViewModelTests {
 		#expect(sut.isTorchOn == true, "Torch state stays consistent with the unchanged hardware")
 	}
 
-	// MARK: - didDismissResult restores the session (§10.1.2)
+	// MARK: - didDismissResult restores the session
 
 	@Test
 	func `didDismissResult restarts the scanner`() async {
@@ -767,7 +766,7 @@ struct ScannerViewModelTests {
 		#expect(sut.state == .idle, "VM must stay idle when the image-picker submit never engaged the live session")
 	}
 
-	// MARK: - Post-dismiss cooldown (§10.1.3)
+	// MARK: - Post-dismiss cooldown
 
 	@Test
 	func `same content within the cooldown window is suppressed`() async {
@@ -819,8 +818,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `submit is suppressed when same content was just live-scanned and cooldown is active`() async {
-		// Per §10.1.3 the cooldown is keyed by rawContent regardless of source.
-		// A gallery scan of the just-dismissed content is suppressed too.
+		// Cooldown is keyed by rawContent regardless of source.
 		let clock = TestClock()
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
@@ -865,10 +863,8 @@ struct ScannerViewModelTests {
 	@Test
 	func `dismissal after backgrounding still records the cooldown so an immediate rescan is suppressed`() async {
 		// `stop()` while a sheet is up preserves the pause-for-result
-		// intent (so dismissal can resume scanning). The dismissal then
-		// records the cooldown like any other dismissal — per §10.1.3
-		// the window is anchored at the dismissal timestamp regardless
-		// of whether the session was suspended in between.
+		// intent, so dismissal records the cooldown like any other
+		// dismissal even when the session was suspended in between.
 		let clock = TestClock()
 		let (sut, env) = makeSUT(clock: clock.now)
 		await sut.start()
@@ -883,7 +879,7 @@ struct ScannerViewModelTests {
 		#expect(sut.coordinator.latestResult == nil, "Cooldown is anchored at dismissal time, not at the last live-running moment")
 	}
 
-	// MARK: - Visual detection highlight (§10.1.4)
+	// MARK: - Visual detection highlight
 
 	@Test
 	func `commit captures the detection bounds from a live scan`() async {
@@ -982,7 +978,7 @@ struct ScannerViewModelTests {
 		#expect(sut.lastDetectionBounds == nil, "External stop must drop any in-flight highlight")
 	}
 
-	// MARK: - Detection confirmation sound (§10.1.4)
+	// MARK: - Detection confirmation sound
 
 	@Test
 	func `detection sound plays on commit when the setting is enabled`() async {
@@ -997,7 +993,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `detection sound is silent when the setting is disabled`() async {
-		// Default settings: isDetectionSoundEnabled == false (opt-in per §10.1.4).
+		// Default settings: isDetectionSoundEnabled == false.
 		let (sut, env) = makeSUT()
 		await sut.start()
 
@@ -1058,9 +1054,7 @@ struct ScannerViewModelTests {
 
 	@Test
 	func `haptic fires on commit even when the detection sound is disabled`() async {
-		// Sound and haptic are independent feedback channels. Per §10.1.4 the
-		// sound is opt-in but the haptic is unconditional — the user gets
-		// tactile confirmation regardless of the audio preference.
+		// Sound is opt-in; the haptic is unconditional.
 		let (sut, env) = makeSUT()
 		await sut.start()
 

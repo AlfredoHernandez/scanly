@@ -5,14 +5,9 @@
 import Foundation
 import ScanlyEngine
 
-/// Test double for `ScanHistoryRepository` backed by an array. Lets
-/// coordinator and view-model tests exercise the persistence seam
-/// without standing up a real SwiftData `ModelContainer`.
-///
-/// The fake honors the upsert contract from §10.2.2 — saving the same
-/// `rawContent` twice produces a single row, and the original
-/// `ScanResult.id` is preserved across the update so list-view diffing
-/// stays stable on reload.
+/// Array-backed test double for `ScanHistoryRepository`. Honors the
+/// upsert contract: saving the same `rawContent` twice produces a
+/// single row, and the original `id` is preserved across the update.
 @MainActor
 public final class InMemoryScanHistoryRepository: ScanHistoryRepository {
 	private struct Row {
@@ -27,16 +22,8 @@ public final class InMemoryScanHistoryRepository: ScanHistoryRepository {
 
 	private var rows: [Row] = []
 
-	/// When non-nil, the next `save` call throws this error and leaves
-	/// the store unchanged. Tests use it to drive the
-	/// "save fails → no history entry" branch documented in §10.2.1.
 	public var saveError: Error?
-
-	/// When non-nil, the next read (`all`, `search`) throws this error.
 	public var readError: Error?
-
-	/// When non-nil, the next delete call (`delete`, `deleteAll`)
-	/// throws this error and leaves the store unchanged.
 	public var deleteError: Error?
 
 	public init() {}

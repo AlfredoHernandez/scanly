@@ -4,15 +4,11 @@
 
 import AudioToolbox
 
-/// Production `DetectionSoundPlaying` backed by `AudioServicesPlaySystemSound`.
-/// System sounds respect the silent switch automatically and require no
-/// audio-session configuration, which keeps the scanner free of audio-route
-/// concerns at the v1.0 surface.
+/// `AudioServicesPlaySystemSound`-backed player. System sounds respect
+/// the silent switch automatically and need no audio-session setup.
 @MainActor
 public final class SystemSoundDetectionPlayer: DetectionSoundPlaying {
-	/// `1057` — "Tink", a short neutral confirmation chime. Configurable
-	/// at init time so the future settings UI (or a future custom-sound
-	/// asset) can swap the tone without touching the scanner pipeline.
+	/// Default `1057` — "Tink", a short neutral confirmation chime.
 	private let soundID: SystemSoundID
 
 	public init(soundID: SystemSoundID = 1057) {

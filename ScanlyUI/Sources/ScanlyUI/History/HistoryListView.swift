@@ -6,18 +6,9 @@ import ScanlyEngine
 import SwiftData
 import SwiftUI
 
-/// Surfaces the persisted scan history (§3.3 + §10.2). Rows are sorted
-/// by `lastScannedAt` desc inside the repository; the view binds to
-/// `viewModel.visibleEntries`, which delegates filtering to
-/// `HistorySearch` so the §10.2.5 field-enumeration / exclusion
-/// rules apply uniformly.
-///
-/// Interactions surfaced here:
-/// - Tap → push `HistoryDetailView`
-/// - Swipe → single-row delete
-/// - Edit toolbar → multi-select + "Delete" toolbar button
-/// - Menu toolbar → "Clear history" with a confirmation dialog
-/// - `.searchable` → query routes through `HistorySearch`
+/// Persisted scan history. Rows are sorted by `lastScannedAt` desc
+/// inside the repository; the view binds to `viewModel.visibleEntries`,
+/// which routes the `.searchable` query through `HistorySearch`.
 public struct HistoryListView: View {
 	@State private var viewModel: HistoryViewModel
 	@State private var editMode: EditMode = .inactive
@@ -107,9 +98,8 @@ public struct HistoryListView: View {
 	}
 
 	private func deleteRows(at offsets: IndexSet) {
-		// Resolve against `visibleEntries`: the user sees a filtered
-		// list, and swipe-to-delete offsets are into that filtered
-		// view, not the full `entries` snapshot.
+		// Offsets are into the filtered list the user sees, not the full
+		// `entries` snapshot.
 		let visible = viewModel.visibleEntries
 		for offset in offsets where visible.indices.contains(offset) {
 			viewModel.delete(visible[offset])
@@ -143,9 +133,6 @@ public struct HistoryListView: View {
 	}
 }
 
-/// One cell of the history list. Shows the type icon, a truncated
-/// content preview, and the last-scanned timestamp. Detail/inspector
-/// content lives in `HistoryDetailView` so the row stays scan-friendly.
 private struct HistoryRow: View {
 	let entry: ScanResult
 

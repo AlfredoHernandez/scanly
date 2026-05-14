@@ -7,21 +7,13 @@ import Observation
 import OSLog
 import ScanlyEngine
 
-/// Drives the history list view (§3.3 + §10.2). Loads the persisted
-/// snapshot from `ScanHistoryRepository`, exposes a search-filtered
-/// view of it, and forwards mutations (single delete, batch delete,
-/// clear all) back to the repository.
-///
-/// Errors from the repository are logged via `Logger.history.error`
-/// and surfaced on `state`; v1.0 does not show user-visible toasts
-/// (§10.2.1's best-effort contract). The list simply does not
-/// observe the failed mutation.
+/// Drives the history list view. Loads the persisted snapshot,
+/// exposes a search-filtered view of it, and forwards mutations back
+/// to the repository. Errors are logged and surfaced on `state` —
+/// best-effort persistence, no user-visible toast.
 @MainActor
 @Observable
 public final class HistoryViewModel {
-	/// Top-level lifecycle state of the history feed. The view uses
-	/// it to choose between the list, an empty placeholder, and an
-	/// error placeholder.
 	public enum State: Equatable {
 		case loading
 		case loaded
@@ -31,14 +23,7 @@ public final class HistoryViewModel {
 	public private(set) var entries: [ScanResult] = []
 	public private(set) var state: State = .loading
 
-	/// Bound to the `.searchable` text field. Mutations recompute
-	/// `visibleEntries` on the next render via `@Observable`
-	/// tracking — no explicit `objectWillChange` plumbing required.
 	public var searchQuery: String = ""
-
-	/// Selected rows for the multi-select batch-delete flow. Keys
-	/// are `ScanResult.id` so the list's `selection:` binding can
-	/// connect directly.
 	public var selection: Set<UUID> = []
 
 	private let repository: ScanHistoryRepository
@@ -47,17 +32,10 @@ public final class HistoryViewModel {
 		self.repository = repository
 	}
 
-	/// View-facing filtered list per the current `searchQuery`.
-	/// Delegates to `HistorySearch` so the inspector exclusions
-	/// (§10.2.5) are honored — searching for a Wi-Fi password or
-	/// URL path never surfaces a row.
 	public var visibleEntries: [ScanResult] {
 		HistorySearch.filter(entries, query: searchQuery)
 	}
 
-	/// Loads (or reloads) the full history snapshot. Called from
-	/// the view's `.task` on first appearance, and after each
-	/// successful mutation to refresh the on-screen list.
 	public func load() {
 		do {
 			entries = try repository.all()
@@ -69,8 +47,6 @@ public final class HistoryViewModel {
 		}
 	}
 
-	/// Single-row delete (swipe-to-delete + per-row destructive
-	/// context action). On success, reloads to refresh `entries`.
 	public func delete(_ entry: ScanResult) {
 		do {
 			try repository.delete(entry)
@@ -80,7 +56,6 @@ public final class HistoryViewModel {
 		}
 	}
 
-	/// Batch delete from the multi-select EditMode flow (§3.3).
 	/// No-op when `selection` is empty so an accidental toolbar tap
 	/// can't wipe the visible filter.
 	public func deleteSelected() {
@@ -95,9 +70,6 @@ public final class HistoryViewModel {
 		}
 	}
 
-	/// "Clear history" action (§3.3). Wipes every row and clears
-	/// any in-flight selection state so the next render starts on
-	/// the empty placeholder.
 	public func deleteAll() {
 		do {
 			try repository.deleteAll()

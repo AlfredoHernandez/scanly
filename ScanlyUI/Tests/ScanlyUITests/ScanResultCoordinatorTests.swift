@@ -41,12 +41,9 @@ struct ScanResultCoordinatorTests {
 
 	@Test
 	func `present still publishes when the repository save fails`() {
-		// §10.2.1 best-effort save: the sheet is shown for the current
-		// scan even if persistence fails. The user-facing flow stays
-		// uninterrupted; the history list simply won't carry the row.
-		// `present` reaching the `latestResult` write also proves the
-		// thrown error was absorbed (a propagated throw would skip the
-		// assignment and trip this test).
+		// Best-effort save: the thrown error is absorbed and the sheet
+		// is still shown. A propagated throw would skip the
+		// `latestResult` write and trip this test.
 		let (sut, repository) = makeSUT()
 		repository.saveError = anyError()
 		let result = anyResult(rawContent: "https://example.com")

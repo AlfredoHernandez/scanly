@@ -92,10 +92,8 @@ struct HistoryViewModelTests {
 
 	@Test
 	func `visibleEntries honors the URL-host-only search rule (delegates to HistorySearch)`() throws {
-		// Smoke test that the VM goes through `HistorySearch`, not a
-		// home-grown rawContent search. A search for a URL path
-		// substring must be suppressed per §10.2.5; if the VM ever
-		// rebuilt the search logic inline it would regress this.
+		// Smoke test that the VM routes through `HistorySearch` instead
+		// of rolling its own rawContent search.
 		let (sut, repository) = makeSUT()
 		let url = try #require(URL(string: "https://example.com/secret-page"))
 		try repository.save(anyResult(rawContent: "https://example.com/secret-page", type: .url(url)))
@@ -103,7 +101,7 @@ struct HistoryViewModelTests {
 
 		sut.searchQuery = "secret-page"
 
-		#expect(sut.visibleEntries.isEmpty, "URL path is excluded from search per §10.2.5")
+		#expect(sut.visibleEntries.isEmpty, "URL path is excluded from search")
 	}
 
 	// MARK: - delete(_:)

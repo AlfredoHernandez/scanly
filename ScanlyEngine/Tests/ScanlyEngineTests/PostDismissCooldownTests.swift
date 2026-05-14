@@ -70,7 +70,7 @@ struct PostDismissCooldownTests {
 		sut.recordDismissal(of: "https://example.com")
 
 		clock.advance(by: 0.5)
-		#expect(sut.shouldSuppress("HTTPS://EXAMPLE.COM") == false, "Cooldown is keyed by exact rawContent per §10.1.3 — no normalization")
+		#expect(sut.shouldSuppress("HTTPS://EXAMPLE.COM") == false, "Cooldown is keyed by exact rawContent — no normalization")
 	}
 
 	@Test

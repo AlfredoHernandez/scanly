@@ -90,26 +90,23 @@ struct HistorySearchTests {
 
 	@Test
 	func `url does not match by path even though path is in rawContent`() {
-		// §10.2.5 excludes URL path from search. Even though the path
-		// string appears in `rawContent`, the algorithm must not
-		// surface this row when the query only matches the path.
 		let inputs = [urlResult("https://example.com/secret-page")]
 
-		#expect(HistorySearch.filter(inputs, query: "secret-page").isEmpty, "URL path is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "secret-page").isEmpty, "URL path is excluded from search")
 	}
 
 	@Test
 	func `url does not match by query string even though it is in rawContent`() {
 		let inputs = [urlResult("https://example.com/path?token=abc123")]
 
-		#expect(HistorySearch.filter(inputs, query: "abc123").isEmpty, "URL query is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "abc123").isEmpty, "URL query is excluded from search")
 	}
 
 	@Test
 	func `url does not match by fragment even though it is in rawContent`() {
 		let inputs = [urlResult("https://example.com#deep-link-anchor")]
 
-		#expect(HistorySearch.filter(inputs, query: "deep-link-anchor").isEmpty, "URL fragment is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "deep-link-anchor").isEmpty, "URL fragment is excluded from search")
 	}
 
 	@Test
@@ -131,13 +128,10 @@ struct HistorySearchTests {
 
 	@Test
 	func `wifi does not match by password even though password appears in rawContent`() {
-		// §10.2.5 excludes Wi-Fi passwords from search. The password
-		// is present in `rawContent` (the literal WIFI:...;P:hunter2;
-		// payload) but must not surface a row when the user types it.
 		let credentials = WiFiCredentials(ssid: "GuestNetwork", password: "hunter2", security: .wpa, isHidden: false)
 		let inputs = [wifiResult(credentials: credentials, rawContent: "WIFI:S:GuestNetwork;T:WPA;P:hunter2;H:;")]
 
-		#expect(HistorySearch.filter(inputs, query: "hunter2").isEmpty, "Wi-Fi password is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "hunter2").isEmpty, "Wi-Fi password is excluded from search")
 	}
 
 	// MARK: - .email type — address is matched, subject/body are not
@@ -155,7 +149,7 @@ struct HistorySearchTests {
 		let payload = EmailPayload(address: "alice@example.com", subject: "Confidential proposal", body: nil)
 		let inputs = [emailResult(payload: payload, rawContent: "mailto:alice@example.com?subject=Confidential%20proposal")]
 
-		#expect(HistorySearch.filter(inputs, query: "confidential").isEmpty, "Email subject is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "confidential").isEmpty, "Email subject is excluded from search")
 	}
 
 	@Test
@@ -163,7 +157,7 @@ struct HistorySearchTests {
 		let payload = EmailPayload(address: "alice@example.com", subject: nil, body: "secret message")
 		let inputs = [emailResult(payload: payload, rawContent: "mailto:alice@example.com?body=secret%20message")]
 
-		#expect(HistorySearch.filter(inputs, query: "secret").isEmpty, "Email body is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "secret").isEmpty, "Email body is excluded from search")
 	}
 
 	// MARK: - .sms type — number is matched, body is not
@@ -181,7 +175,7 @@ struct HistorySearchTests {
 		let payload = SMSPayload(number: "+15551234567", body: "see appendix")
 		let inputs = [smsResult(payload: payload, rawContent: "smsto:+15551234567:see appendix")]
 
-		#expect(HistorySearch.filter(inputs, query: "appendix").isEmpty, "SMS body is excluded from search per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "appendix").isEmpty, "SMS body is excluded from search")
 	}
 
 	// MARK: - .phone type — number is matched
@@ -195,14 +189,9 @@ struct HistorySearchTests {
 
 	@Test
 	func `phone does not match by tel: scheme prefix even though it is in rawContent`() {
-		// `rawContent` for a phone payload is `"tel:+<number>"`. The
-		// indexed value is the number alone — typing `"tel:"` must
-		// not surface every phone row in the store. This pairs with
-		// the URL/Wi-Fi/email exclusion tests above: every structured
-		// type keeps a literal rawContent prefix out of search.
 		let inputs = [phoneResult(number: "+15551234567", rawContent: "tel:+15551234567")]
 
-		#expect(HistorySearch.filter(inputs, query: "tel:").isEmpty, "Phone scheme prefix is not an indexed field per §10.2.5")
+		#expect(HistorySearch.filter(inputs, query: "tel:").isEmpty, "Phone scheme prefix is not an indexed field")
 	}
 
 	// MARK: - .location type — formatted coordinates are matched
@@ -232,7 +221,7 @@ struct HistorySearchTests {
 		#expect(HistorySearch.filter(inputs, query: "37.123456789").isEmpty, "Indexed value rounds to 6 fraction digits")
 	}
 
-	// MARK: - .contact type — vCard rawContent is indexed (v1.0 caveat)
+	// MARK: - .contact type — vCard rawContent is indexed
 
 	@Test
 	func `contact matches by name embedded in vCard rawContent`() {
