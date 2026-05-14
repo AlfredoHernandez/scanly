@@ -80,7 +80,7 @@ struct ScanResultCoordinatorTests {
 
 	// MARK: - Helpers
 
-	private func makeSUT() -> (ScanResultCoordinator, InMemoryScanHistoryRepository) {
+	private func makeSUT() -> (sut: ScanResultCoordinator, repository: InMemoryScanHistoryRepository) {
 		let repository = InMemoryScanHistoryRepository()
 		let coordinator = ScanResultCoordinator(repository: repository)
 		return (coordinator, repository)

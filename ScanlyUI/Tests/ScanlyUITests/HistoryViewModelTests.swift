@@ -208,7 +208,7 @@ struct HistoryViewModelTests {
 
 	// MARK: - Helpers
 
-	private func makeSUT() -> (HistoryViewModel, InMemoryScanHistoryRepository) {
+	private func makeSUT() -> (sut: HistoryViewModel, repository: InMemoryScanHistoryRepository) {
 		let repository = InMemoryScanHistoryRepository()
 		let viewModel = HistoryViewModel(repository: repository)
 		return (viewModel, repository)
