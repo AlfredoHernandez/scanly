@@ -22,15 +22,8 @@ public nonisolated struct InspectorRow: Equatable, Sendable {
 		self.value = value
 	}
 
-	/// Pins the lookup to ScanlyEngine's bundle so domain code
-	/// (e.g. `QRType.inspectorRows`) builds rows whose key resolves
-	/// from this package's catalog regardless of which module is
-	/// rendering the row downstream.
-	public static func localized(_ key: String.LocalizationValue, value: String) -> InspectorRow {
-		InspectorRow(
-			label: .localized(LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))),
-			value: value,
-		)
+	public static func localized(_ key: LocalizedStringResource, value: String) -> InspectorRow {
+		InspectorRow(label: .localized(key), value: value)
 	}
 
 	public static func verbatim(_ label: String, value: String) -> InspectorRow {

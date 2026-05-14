@@ -16,10 +16,7 @@ let package = Package(
 		.library(name: "ScanlyEngineTestSupport", targets: ["ScanlyEngineTestSupport"]),
 	],
 	targets: [
-		.target(
-			name: "ScanlyEngine",
-			resources: [.process("Resources")],
-		),
+		.target(name: "ScanlyEngine"),
 		.target(name: "ScanlyEngineTestSupport", dependencies: ["ScanlyEngine"]),
 		.testTarget(
 			name: "ScanlyEngineTests",

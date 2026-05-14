@@ -175,7 +175,7 @@ public final class ScannerViewModel {
 			state = .scanning
 
 		case let .failure(error as QRScannerError):
-			state = .failed(message: error.localizedMessage)
+			state = .failed(message: String(localized: error.localizationKey))
 			Logger.scanner.error("Scanner start failed: \(String(describing: error), privacy: .public)")
 
 		case let .failure(error):

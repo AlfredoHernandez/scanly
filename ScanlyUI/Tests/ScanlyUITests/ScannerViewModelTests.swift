@@ -30,7 +30,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		env.scanner.startError = error
 		await sut.start()
-		#expect(sut.state == .failed(message: error.localizedMessage))
+		#expect(sut.state == .failed(message: String(localized: error.localizationKey)))
 	}
 
 	@Test
@@ -122,7 +122,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		env.scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
-		#expect(sut.state == .failed(message: QRScannerError.cameraUnavailable.localizedMessage))
+		#expect(sut.state == .failed(message: String(localized: QRScannerError.cameraUnavailable.localizationKey)))
 
 		env.scanner.startError = nil
 		await sut.start()
