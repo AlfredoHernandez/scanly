@@ -182,7 +182,10 @@ struct SwiftDataScanHistoryRepositoryTests {
 		try firstRepo.save(anyResult(rawContent: "https://example.com", at: timestamp(0)))
 		try firstRepo.save(anyResult(rawContent: "https://other.com", at: timestamp(60)))
 
-		let secondRepo = SwiftDataScanHistoryRepository(context: ModelContext(container))
+		let secondRepo = SwiftDataScanHistoryRepository(
+			context: ModelContext(container),
+			parser: QRContentParser(),
+		)
 
 		#expect(try secondRepo.all().map(\.rawContent) == ["https://other.com", "https://example.com"])
 	}
@@ -213,11 +216,14 @@ struct SwiftDataScanHistoryRepositoryTests {
 
 	// MARK: - Helpers
 
-	private func makeSUT() throws -> (SwiftDataScanHistoryRepository, ModelContainer) {
+	private func makeSUT() throws -> (sut: SwiftDataScanHistoryRepository, container: ModelContainer) {
 		let schema = Schema([ScanHistoryEntry.self])
 		let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
 		let container = try ModelContainer(for: schema, configurations: [configuration])
-		let repository = SwiftDataScanHistoryRepository(context: ModelContext(container))
+		let repository = SwiftDataScanHistoryRepository(
+			context: ModelContext(container),
+			parser: QRContentParser(),
+		)
 		return (repository, container)
 	}
 }

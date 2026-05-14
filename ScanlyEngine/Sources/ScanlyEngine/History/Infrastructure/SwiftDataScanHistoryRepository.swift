@@ -14,7 +14,7 @@ public final class SwiftDataScanHistoryRepository: ScanHistoryRepository {
 	private let context: ModelContext
 	private let parser: QRContentParsing
 
-	public init(context: ModelContext, parser: QRContentParsing = QRContentParser()) {
+	public init(context: ModelContext, parser: QRContentParsing) {
 		self.context = context
 		self.parser = parser
 	}

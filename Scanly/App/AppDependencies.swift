@@ -28,7 +28,10 @@ final class AppDependencies {
 	init(modelContainer: ModelContainer = AppDependencies.makeDefaultModelContainer()) {
 		self.modelContainer = modelContainer
 		let scanner = AVFoundationQRScanner()
-		let repository = SwiftDataScanHistoryRepository(context: ModelContext(modelContainer))
+		let repository = SwiftDataScanHistoryRepository(
+			context: ModelContext(modelContainer),
+			parser: QRContentParser(),
+		)
 		let scanResultCoordinator = ScanResultCoordinator(repository: repository)
 		let scannerViewModel = ScannerViewModel(
 			scanner: scanner,
