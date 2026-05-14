@@ -511,10 +511,7 @@ struct ScannerViewModelTests {
 		let (sut, env) = makeSUT()
 		env.scanner.startError = QRScannerError.cameraUnavailable
 		await sut.start()
-		guard case .failed = sut.state else {
-			Issue.record("Expected .failed, got \(sut.state)")
-			return
-		}
+		#expect(isFailed(sut.state))
 
 		sut.toggleTorch()
 
@@ -743,10 +740,7 @@ struct ScannerViewModelTests {
 		sut.coordinator.latestResult = nil
 		await sut.didDismissResult()
 
-		guard case .failed = sut.state else {
-			Issue.record("Expected .failed after a restart that throws, got \(sut.state)")
-			return
-		}
+		#expect(isFailed(sut.state), "Expected .failed after a restart that throws, got \(sut.state)")
 		#expect(sut.isTorchOn == false)
 	}
 
@@ -1103,6 +1097,12 @@ struct ScannerViewModelTests {
 			settings: settings,
 		)
 		return (sut, env)
+	}
+
+	/// Pattern-match helper for the `.failed` case so tests can read
+	/// `#expect(isFailed(sut.state))` instead of unrolling `if case`.
+	private func isFailed(_ state: ScannerViewModel.State) -> Bool {
+		if case .failed = state { true } else { false }
 	}
 
 	/// Bundles every collaborator `makeSUT()` constructs alongside the SUT.
