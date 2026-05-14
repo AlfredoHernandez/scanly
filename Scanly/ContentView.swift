@@ -8,33 +8,48 @@ import SwiftUI
 struct ContentView: View {
 	@State private var scanner = AVFoundationQRScanner()
 	private let coordinator: ScanResultCoordinator
+	private let historyViewModel: HistoryViewModel
 
 	/// Wires the composition root for the scanner + history flow.
-	/// Builds a `SwiftDataScanHistoryRepository` against a fresh
-	/// `ModelContext` derived from the app-owned container, then
-	/// constructs the shared `ScanResultCoordinator` the scanner and
-	/// (in later steps) the history list both bind through. Called
-	/// once per view-tree composition from `ScanlyApp`.
+	/// Builds a single `SwiftDataScanHistoryRepository` against a
+	/// fresh `ModelContext` derived from the app-owned container,
+	/// then hands the same repository instance to the
+	/// `ScanResultCoordinator` (the scanner's write side) and the
+	/// `HistoryViewModel` (the history tab's read side). Sharing the
+	/// repository means a scan saved on the Scanner tab is visible
+	/// on the History tab the next time it loads — both consumers
+	/// look at the same SwiftData rows.
 	init(modelContainer: ModelContainer) {
 		let repository = SwiftDataScanHistoryRepository(context: ModelContext(modelContainer))
 		coordinator = ScanResultCoordinator(repository: repository)
+		historyViewModel = HistoryViewModel(repository: repository)
 	}
 
 	var body: some View {
-		ScannerView(
-			viewModel: ScannerViewModel(
-				scanner: scanner,
-				torch: scanner,
-				haptics: UIKitHapticFeedback(),
-				sound: SystemSoundDetectionPlayer(),
-				settings: UserDefaultsScannerSettings(defaults: .standard),
-				coordinator: coordinator,
-				clock: Date.init,
-			),
-			previewProvider: scanner,
-			cameraControls: scanner,
-			imageDetector: VisionImageBarcodeDetector(),
-		)
+		TabView {
+			ScannerView(
+				viewModel: ScannerViewModel(
+					scanner: scanner,
+					torch: scanner,
+					haptics: UIKitHapticFeedback(),
+					sound: SystemSoundDetectionPlayer(),
+					settings: UserDefaultsScannerSettings(defaults: .standard),
+					coordinator: coordinator,
+					clock: Date.init,
+				),
+				previewProvider: scanner,
+				cameraControls: scanner,
+				imageDetector: VisionImageBarcodeDetector(),
+			)
+			.tabItem {
+				Label("tab.scanner", systemImage: "qrcode.viewfinder")
+			}
+
+			HistoryListView(viewModel: historyViewModel)
+				.tabItem {
+					Label("tab.history", systemImage: "clock.arrow.circlepath")
+				}
+		}
 	}
 }
 
