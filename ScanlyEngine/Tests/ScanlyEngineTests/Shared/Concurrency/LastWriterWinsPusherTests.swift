@@ -40,15 +40,21 @@ struct LastWriterWinsPusherTests {
 	}
 
 	@Test
-	func `push followed immediately by deinit suppresses delivery`() async throws {
+	func `push followed immediately by deinit suppresses delivery`() async {
 		let sink = SinkSpy<Int>()
 		var sut: LastWriterWinsPusher<Int>? = LastWriterWinsPusher(sink: sink.record)
 		sut?.push(7)
 		// Tearing down before the scheduled task gets a turn should
-		// cancel it so the sink is never called.
+		// cancel it so the sink is never called. Wait for the *opposite*
+		// of the invariant — if anything lands on the sink the wait
+		// resolves and the throws expectation fails fast; if nothing
+		// lands the wait times out, which is the success signal.
 		sut = nil
-		try await Task.sleep(for: .milliseconds(50))
-		#expect(sink.received.isEmpty, "Deinit must cancel the pending task before it delivers")
+		await #expect(throws: WaitUntilTimeout.self) {
+			try await waitUntil(timeout: .milliseconds(50)) {
+				!sink.received.isEmpty
+			}
+		}
 	}
 
 	// MARK: - Helpers
