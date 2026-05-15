@@ -2,6 +2,7 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+import Observation
 import ScanlyEngine
 
 /// Drives the action layer of the scan result sheet (§10.3): the
@@ -11,6 +12,7 @@ import ScanlyEngine
 /// One instance is created per presented `ScanResult` and owned by the
 /// sheet for the lifetime of that presentation.
 @MainActor
+@Observable
 public final class ScanResultActionsViewModel {
 	/// The scan the sheet is presenting. Drives the detail content and
 	/// the derived primary action.

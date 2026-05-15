@@ -10,6 +10,8 @@ import UIKit
 @MainActor
 public protocol Pasteboard {
 	/// Replaces the pasteboard's contents with `string`.
+	///
+	/// - Parameter string: The text to place on the pasteboard.
 	func copy(_ string: String)
 }
 

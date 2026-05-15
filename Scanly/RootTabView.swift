@@ -29,7 +29,7 @@ struct RootTabView: View {
 				previewProvider: dependencies.scanner,
 				cameraControls: dependencies.scanner,
 				imageDetector: dependencies.imageDetector,
-				makeScanResultActions: dependencies.makeScanResultActionsViewModel,
+				makeScanResultActions: { dependencies.makeScanResultActionsViewModel(for: $0) },
 			)
 			.tabItem {
 				Label("tab.scanner", systemImage: "qrcode.viewfinder")
