@@ -36,11 +36,17 @@ public nonisolated enum ScanResultPrimaryAction: Equatable, Sendable {
 	/// Show a scanned coordinate in Maps.
 	case openMaps(latitude: Double, longitude: Double)
 
-	/// Share raw scanned content through the system share sheet.
+	/// Share raw scanned content through the system share sheet. This is
+	/// also the primary action for a `.text` scan, which has no richer
+	/// action than sharing its payload (§10.3.4).
 	case share(String)
 
 	/// Derives the primary action for a scan result following the
 	/// per-type mapping in §10.3.2.
+	///
+	/// A `.text` scan collapses onto `.share` carrying `rawContent` rather
+	/// than the parsed text, so the recipient receives the exact scanned
+	/// payload (§10.3.4).
 	///
 	/// - Parameter result: The accepted scan to derive the action from.
 	public init(for result: ScanResult) {
@@ -67,14 +73,12 @@ public nonisolated enum ScanResultPrimaryAction: Equatable, Sendable {
 			self = .openMaps(latitude: latitude, longitude: longitude)
 
 		case .text:
-			// Share always carries `rawContent`, never the parsed text,
-			// so the recipient gets the exact scanned payload (§10.3.4).
 			self = .share(result.rawContent)
 		}
 	}
 
 	/// String-catalog key for the button's title, namespaced
-	/// `scanner.action.*`.
+	/// `scanner.action.*` (e.g. `scanner.action.open_url`).
 	public var labelKey: LocalizedStringResource {
 		switch self {
 		case .openURL: "scanner.action.open_url"

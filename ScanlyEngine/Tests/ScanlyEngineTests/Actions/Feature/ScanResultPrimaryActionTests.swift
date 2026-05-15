@@ -4,6 +4,7 @@
 
 @testable import ScanlyEngine
 import Foundation
+import ScanlyEngineTestSupport
 import Testing
 
 struct ScanResultPrimaryActionTests {
@@ -12,41 +13,41 @@ struct ScanResultPrimaryActionTests {
 	@Test
 	func `url scan maps to openURL carrying the scanned URL`() throws {
 		let url = try #require(URL(string: "https://example.com/page"))
-		#expect(ScanResultPrimaryAction(for: makeResult(.url(url))) == .openURL(url))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .url(url))) == .openURL(url))
 	}
 
 	@Test
 	func `wifi scan maps to connectWiFi carrying the credentials`() {
 		let credentials = WiFiCredentials(ssid: "Home", password: "secret", security: .wpa)
-		#expect(ScanResultPrimaryAction(for: makeResult(.wifi(credentials))) == .connectWiFi(credentials))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .wifi(credentials))) == .connectWiFi(credentials))
 	}
 
 	@Test
 	func `contact scan maps to addContact carrying the vCard`() {
 		let vCard = "BEGIN:VCARD\nFN:Jane\nEND:VCARD"
-		#expect(ScanResultPrimaryAction(for: makeResult(.contact(vCard: vCard))) == .addContact(vCard: vCard))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .contact(vCard: vCard))) == .addContact(vCard: vCard))
 	}
 
 	@Test
 	func `phone scan maps to call carrying the number`() {
-		#expect(ScanResultPrimaryAction(for: makeResult(.phone("+14155551212"))) == .call("+14155551212"))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .phone("+14155551212"))) == .call("+14155551212"))
 	}
 
 	@Test
 	func `email scan maps to composeEmail carrying the payload`() {
 		let payload = EmailPayload(address: "me@example.com", subject: "Hi", body: "Hello")
-		#expect(ScanResultPrimaryAction(for: makeResult(.email(payload))) == .composeEmail(payload))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .email(payload))) == .composeEmail(payload))
 	}
 
 	@Test
 	func `sms scan maps to sendSMS carrying the payload`() {
 		let payload = SMSPayload(number: "+14155551212", body: "hola")
-		#expect(ScanResultPrimaryAction(for: makeResult(.sms(payload))) == .sendSMS(payload))
+		#expect(ScanResultPrimaryAction(for: anyResult(type: .sms(payload))) == .sendSMS(payload))
 	}
 
 	@Test
 	func `location scan maps to openMaps carrying the coordinate`() {
-		let result = makeResult(.location(latitude: 19.4326, longitude: -99.1332))
+		let result = anyResult(type: .location(latitude: 19.4326, longitude: -99.1332))
 		#expect(ScanResultPrimaryAction(for: result) == .openMaps(latitude: 19.4326, longitude: -99.1332))
 	}
 
@@ -54,32 +55,71 @@ struct ScanResultPrimaryActionTests {
 
 	@Test
 	func `text scan maps to share carrying the raw content, not the parsed text`() {
-		let result = makeResult(.text("parsed text"), rawContent: "raw scanned payload")
+		let result = anyResult(rawContent: "raw scanned payload", type: .text("parsed text"))
 		#expect(ScanResultPrimaryAction(for: result) == .share("raw scanned payload"))
 	}
 
 	// MARK: - Label keys (§10.3.2)
 
-	@Test
-	func `label keys are namespaced under scanner action`() throws {
-		let url = try #require(URL(string: "https://example.com"))
-		#expect(ScanResultPrimaryAction.openURL(url).labelKey == "scanner.action.open_url")
-		#expect(ScanResultPrimaryAction.connectWiFi(anyWiFi()).labelKey == "scanner.action.connect_wifi")
-		#expect(ScanResultPrimaryAction.addContact(vCard: "x").labelKey == "scanner.action.add_contact")
-		#expect(ScanResultPrimaryAction.call("x").labelKey == "scanner.action.call")
-		#expect(ScanResultPrimaryAction.composeEmail(EmailPayload(address: "a@b.com")).labelKey == "scanner.action.compose_email")
-		#expect(ScanResultPrimaryAction.sendSMS(SMSPayload(number: "x")).labelKey == "scanner.action.send_sms")
-		#expect(ScanResultPrimaryAction.openMaps(latitude: 0, longitude: 0).labelKey == "scanner.action.open_maps")
-		#expect(ScanResultPrimaryAction.share("x").labelKey == "scanner.action.share")
+	@Test(arguments: ActionCase.allCases)
+	func `labelKey is namespaced under scanner action`(actionCase: ActionCase) throws {
+		try #expect(actionCase.makeSUT().labelKey == actionCase.expectedKey)
 	}
 
 	// MARK: - Helpers
 
-	private func makeResult(_ type: QRType, rawContent: String = "raw-content") -> ScanResult {
-		ScanResult(rawContent: rawContent, type: type, format: .qr, scannedAt: Date(timeIntervalSince1970: 0))
-	}
+	/// One representative `ScanResultPrimaryAction` per case. Modeled as a
+	/// `CaseIterable` enum so an action added without label-key coverage
+	/// fails to compile rather than slipping through untested.
+	enum ActionCase: CaseIterable {
+		case openURL, connectWiFi, addContact, call, composeEmail, sendSMS, openMaps, share
 
-	private func anyWiFi() -> WiFiCredentials {
-		WiFiCredentials(ssid: "ssid", password: nil, security: .none)
+		func makeSUT() throws -> ScanResultPrimaryAction {
+			switch self {
+			case .openURL:
+				try .openURL(#require(URL(string: "https://example.com")))
+
+			case .connectWiFi:
+				.connectWiFi(WiFiCredentials(ssid: "ssid", security: .none))
+
+			case .addContact:
+				.addContact(vCard: "BEGIN:VCARD\nEND:VCARD")
+
+			case .call:
+				.call("+14155551212")
+
+			case .composeEmail:
+				.composeEmail(EmailPayload(address: "me@example.com"))
+
+			case .sendSMS:
+				.sendSMS(SMSPayload(number: "+14155551212"))
+
+			case .openMaps:
+				.openMaps(latitude: 0, longitude: 0)
+
+			case .share:
+				.share("text")
+			}
+		}
+
+		var expectedKey: LocalizedStringResource {
+			switch self {
+			case .openURL: "scanner.action.open_url"
+
+			case .connectWiFi: "scanner.action.connect_wifi"
+
+			case .addContact: "scanner.action.add_contact"
+
+			case .call: "scanner.action.call"
+
+			case .composeEmail: "scanner.action.compose_email"
+
+			case .sendSMS: "scanner.action.send_sms"
+
+			case .openMaps: "scanner.action.open_maps"
+
+			case .share: "scanner.action.share"
+			}
+		}
 	}
 }
