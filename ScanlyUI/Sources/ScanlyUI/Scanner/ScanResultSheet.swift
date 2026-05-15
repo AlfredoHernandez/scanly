@@ -44,7 +44,7 @@ public struct ScanResultSheet: View {
 				presenting: actions.activeAlert.confirmingURL,
 			) { _ in
 				Button("scanner.alert.open") {
-					Task { await actions.confirmURLOpen() }
+					actions.confirmURLOpen()
 				}
 				Button("scanner.alert.cancel", role: .cancel) {
 					actions.dismissAlert()

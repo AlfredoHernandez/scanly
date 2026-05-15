@@ -100,12 +100,17 @@ public final class ScanResultActionsViewModel {
 	}
 
 	/// Confirms the URL-confirmation alert: clears it and hands the URL
-	/// to the system (§10.3.3). No-op unless the scan's primary action
-	/// is a URL open.
-	public func confirmURLOpen() async {
-		guard case let .openURL(url) = primaryAction else { return }
+	/// to the system (§10.3.3). No-op unless a URL confirmation is
+	/// currently active.
+	///
+	/// Synchronous so the alert clears on the same run-loop turn as the
+	/// button tap. Clearing it from an async hop instead would leave
+	/// `activeAlert` set while the alert dismisses, and SwiftUI would
+	/// re-present it from the still-true `isPresented` binding.
+	public func confirmURLOpen() {
+		guard case let .urlConfirmation(url) = activeAlert else { return }
 		activeAlert = .none
-		await urlOpener.open(url)
+		Task { await urlOpener.open(url) }
 	}
 
 	/// Dismisses the active alert without performing its action.

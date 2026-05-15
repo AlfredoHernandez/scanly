@@ -12,7 +12,8 @@ public protocol URLOpening {
 	/// Hands `url` to the system to open in the appropriate app.
 	///
 	/// - Parameter url: The URL to open.
-	/// - Returns: `true` when the system accepted the URL.
+	/// - Returns: `true` when the system opened the URL, `false` when no
+	///   installed app could handle it.
 	@discardableResult
 	func open(_ url: URL) async -> Bool
 }

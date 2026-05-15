@@ -87,10 +87,19 @@ struct ScanResultActionsViewModelTests {
 		let (sut, env) = makeSUT(type: .url(url))
 		sut.performPrimaryAction()
 
-		await sut.confirmURLOpen()
+		sut.confirmURLOpen()
 
-		#expect(env.urlOpener.openedURLs == [url])
 		#expect(sut.activeAlert == .none)
+		try await waitUntil { env.urlOpener.openedURLs == [url] }
+	}
+
+	@Test
+	func `confirmURLOpen is a no-op when no alert is active`() {
+		let (sut, env) = makeSUT(rawContent: "just text", type: .text("just text"))
+
+		sut.confirmURLOpen()
+
+		#expect(env.urlOpener.openedURLs.isEmpty)
 	}
 
 	// MARK: - dismissAlert()
