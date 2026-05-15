@@ -41,17 +41,6 @@
                ReferencedContainer = "container:Scanly.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "384C5BEE2F8896C600204CFC"
-               BuildableName = "ScanlyUITests.xctest"
-               BlueprintName = "ScanlyUITests"
-               ReferencedContainer = "container:Scanly.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

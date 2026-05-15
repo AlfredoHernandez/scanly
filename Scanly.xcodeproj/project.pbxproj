@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5CABBBBB0000000000000006 /* ScanlyUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CABBBBB0000000000000005 /* ScanlyUI */; };
+		5CABBBBB0000000000000008 /* ScanlyUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CABBBBB0000000000000007 /* ScanlyUI */; };
+		5CAEEEEE0000000000000003 /* ScanlyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5CAEEEEE0000000000000002 /* ScanlyEngine */; };
+		5CAEEEEE0000000000000005 /* ScanlyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5CAEEEEE0000000000000004 /* ScanlyEngine */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		384C5BE62F8896C600204CFC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -39,6 +46,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5CAEEEEE0000000000000003 /* ScanlyEngine in Frameworks */,
+				5CABBBBB0000000000000006 /* ScanlyUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +55,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5CAEEEEE0000000000000005 /* ScanlyEngine in Frameworks */,
+				5CABBBBB0000000000000008 /* ScanlyUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +101,8 @@
 			);
 			name = Scanly;
 			packageProductDependencies = (
+				5CAEEEEE0000000000000002 /* ScanlyEngine */,
+				5CABBBBB0000000000000005 /* ScanlyUI */,
 			);
 			productName = Scanly;
 			productReference = 384C5BD82F8896C600204CFC /* Scanly.app */;
@@ -113,6 +126,8 @@
 			);
 			name = ScanlyTests;
 			packageProductDependencies = (
+				5CAEEEEE0000000000000004 /* ScanlyEngine */,
+				5CABBBBB0000000000000007 /* ScanlyUI */,
 			);
 			productName = ScanlyTests;
 			productReference = 384C5BE52F8896C600204CFC /* ScanlyTests.xctest */;
@@ -147,6 +162,10 @@
 			);
 			mainGroup = 384C5BCF2F8896C500204CFC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */,
+				5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 384C5BD92F8896C600204CFC /* Products */;
 			projectDirPath = "";
@@ -350,6 +369,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -381,6 +401,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -398,6 +419,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scanly.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scanly";
@@ -416,6 +438,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scanly.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scanly";
@@ -453,6 +476,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ScanlyUI;
+		};
+		5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ScanlyEngine;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5CABBBBB0000000000000005 /* ScanlyUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */;
+			productName = ScanlyUI;
+		};
+		5CABBBBB0000000000000007 /* ScanlyUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CABBBBB0000000000000004 /* XCLocalSwiftPackageReference "ScanlyUI" */;
+			productName = ScanlyUI;
+		};
+		5CAEEEEE0000000000000002 /* ScanlyEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */;
+			productName = ScanlyEngine;
+		};
+		5CAEEEEE0000000000000004 /* ScanlyEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CAEEEEE0000000000000001 /* XCLocalSwiftPackageReference "ScanlyEngine" */;
+			productName = ScanlyEngine;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 384C5BD02F8896C500204CFC /* Project object */;
 }
