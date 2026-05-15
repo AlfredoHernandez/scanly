@@ -54,7 +54,9 @@ public struct SystemSharing: Sharing {
 			.first { $0.activationState == .foregroundActive }?
 			.keyWindow?
 			.rootViewController
-		while let presented = presenter?.presentedViewController {
+		// Skip a controller that is mid-dismissal: presenting over it
+		// is undefined behaviour and can trap.
+		while let presented = presenter?.presentedViewController, !presented.isBeingDismissed {
 			presenter = presented
 		}
 		return presenter

@@ -18,19 +18,18 @@ public final class ScanResultActionsViewModel {
 	/// the derived primary action.
 	public let result: ScanResult
 
+	/// The per-type primary call-to-action for the presented scan,
+	/// derived per §10.3.2. Fixed for the lifetime of the view model.
+	public let primaryAction: ScanResultPrimaryAction
+
 	private let pasteboard: Pasteboard
 	private let sharing: Sharing
 
 	public init(result: ScanResult, pasteboard: Pasteboard, sharing: Sharing) {
 		self.result = result
+		primaryAction = ScanResultPrimaryAction(for: result)
 		self.pasteboard = pasteboard
 		self.sharing = sharing
-	}
-
-	/// The per-type primary call-to-action for the presented scan,
-	/// derived per §10.3.2.
-	public var primaryAction: ScanResultPrimaryAction {
-		ScanResultPrimaryAction(for: result)
 	}
 
 	/// Copies the entire scanned payload (`rawContent`) to the pasteboard.
