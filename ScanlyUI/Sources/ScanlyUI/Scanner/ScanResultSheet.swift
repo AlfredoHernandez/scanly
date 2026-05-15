@@ -21,9 +21,11 @@ public struct ScanResultSheet: View {
 			}
 			.navigationTitle("scanner.result.title")
 			.navigationBarTitleDisplayMode(.inline)
+			.interactiveDismissDisabled(actions.isAlertActive)
 			.toolbar {
 				ToolbarItem(placement: .confirmationAction) {
 					Button("scanner.result.done") { dismiss() }
+						.disabled(actions.isAlertActive)
 				}
 				ToolbarItem(placement: .bottomBar) {
 					Button("scanner.action.share", systemImage: "square.and.arrow.up") {
@@ -35,6 +37,20 @@ public struct ScanResultSheet: View {
 						actions.copyRawContent()
 					}
 				}
+			}
+			.alert(
+				"scanner.alert.open_url.title",
+				isPresented: urlConfirmationBinding,
+				presenting: actions.activeAlert.confirmingURL,
+			) { _ in
+				Button("scanner.alert.open") {
+					Task { await actions.confirmURLOpen() }
+				}
+				Button("scanner.alert.cancel", role: .cancel) {
+					actions.dismissAlert()
+				}
+			} message: { url in
+				Text(verbatim: urlAlertMessage(for: url))
 			}
 		}
 	}
@@ -50,6 +66,25 @@ public struct ScanResultSheet: View {
 		.controlSize(.large)
 		.padding()
 	}
+
+	/// Drives the URL-confirmation alert from `activeAlert`. Clearing the
+	/// alert on dismissal keeps `activeAlert` in sync when the user taps
+	/// a button or the system dismisses it.
+	private var urlConfirmationBinding: Binding<Bool> {
+		Binding(
+			get: { actions.activeAlert.confirmingURL != nil },
+			set: { isPresented in
+				if !isPresented { actions.dismissAlert() }
+			},
+		)
+	}
+
+	/// Host on its own line followed by the full URL (§10.3.3).
+	private func urlAlertMessage(for url: URL) -> String {
+		let host = URLBreakdown(url: url).host
+		guard let host, !host.isEmpty else { return url.absoluteString }
+		return "\(host)\n\(url.absoluteString)"
+	}
 }
 
 #Preview {
@@ -63,6 +98,7 @@ public struct ScanResultSheet: View {
 			),
 			pasteboard: SystemPasteboard(),
 			sharing: SystemSharing(),
+			urlOpener: SystemURLOpener(),
 		),
 	)
 }

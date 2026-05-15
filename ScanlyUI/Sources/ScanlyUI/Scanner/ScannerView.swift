@@ -362,7 +362,12 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 		cameraControls: stub,
 		imageDetector: PreviewImageDetector(),
 		makeScanResultActions: {
-			ScanResultActionsViewModel(result: $0, pasteboard: SystemPasteboard(), sharing: SystemSharing())
+			ScanResultActionsViewModel(
+				result: $0,
+				pasteboard: SystemPasteboard(),
+				sharing: SystemSharing(),
+				urlOpener: SystemURLOpener(),
+			)
 		},
 	)
 }

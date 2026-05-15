@@ -2,6 +2,7 @@
 //  Copyright © 2026 Jesús Alfredo Hernández Alarcón. All rights reserved.
 //
 
+import Foundation
 import Observation
 import ScanlyEngine
 
@@ -14,6 +15,24 @@ import ScanlyEngine
 @MainActor
 @Observable
 public final class ScanResultActionsViewModel {
+	/// An alert the action layer is requesting the sheet to present.
+	/// A single enum (rather than several booleans) keeps at most one
+	/// alert active, matching SwiftUI's one-`.alert`-per-view limit
+	/// (§10.3.3).
+	public enum Alert: Equatable {
+		/// No alert requested.
+		case none
+
+		/// Confirm opening a scanned URL before handing it to the
+		/// system (§10.3.3).
+		case urlConfirmation(URL)
+
+		/// The URL awaiting confirmation, when this is `.urlConfirmation`.
+		var confirmingURL: URL? {
+			if case let .urlConfirmation(url) = self { url } else { nil }
+		}
+	}
+
 	/// The scan the sheet is presenting. Drives the detail content and
 	/// the derived primary action.
 	public let result: ScanResult
@@ -22,14 +41,31 @@ public final class ScanResultActionsViewModel {
 	/// derived per §10.3.2. Fixed for the lifetime of the view model.
 	public let primaryAction: ScanResultPrimaryAction
 
+	/// The alert the sheet should present, or `.none`.
+	public private(set) var activeAlert: Alert = .none
+
 	private let pasteboard: Pasteboard
 	private let sharing: Sharing
+	private let urlOpener: URLOpening
 
-	public init(result: ScanResult, pasteboard: Pasteboard, sharing: Sharing) {
+	public init(
+		result: ScanResult,
+		pasteboard: Pasteboard,
+		sharing: Sharing,
+		urlOpener: URLOpening,
+	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
 		self.pasteboard = pasteboard
 		self.sharing = sharing
+		self.urlOpener = urlOpener
+	}
+
+	/// Whether an alert is blocking the sheet. The sheet disables
+	/// swipe-to-dismiss and its Done button while this is `true`
+	/// (§10.3.3).
+	public var isAlertActive: Bool {
+		activeAlert != .none
 	}
 
 	/// Copies the entire scanned payload (`rawContent`) to the pasteboard.
@@ -46,15 +82,34 @@ public final class ScanResultActionsViewModel {
 		sharing.share(result.rawContent)
 	}
 
-	/// Fires the per-type primary call-to-action (§10.3.2).
+	/// Fires the per-type primary call-to-action (§10.3.2). Opening a URL
+	/// is gated behind a confirmation alert (§10.3.3); other actions run
+	/// directly.
 	public func performPrimaryAction() {
 		switch primaryAction {
+		case let .openURL(url):
+			activeAlert = .urlConfirmation(url)
+
 		case .share:
 			share()
 
 		// Wired in later §10.3 steps.
-		case .openURL, .connectWiFi, .addContact, .call, .composeEmail, .sendSMS, .openMaps:
+		case .connectWiFi, .addContact, .call, .composeEmail, .sendSMS, .openMaps:
 			break
 		}
+	}
+
+	/// Confirms the URL-confirmation alert: clears it and hands the URL
+	/// to the system (§10.3.3). No-op unless the scan's primary action
+	/// is a URL open.
+	public func confirmURLOpen() async {
+		guard case let .openURL(url) = primaryAction else { return }
+		activeAlert = .none
+		await urlOpener.open(url)
+	}
+
+	/// Dismisses the active alert without performing its action.
+	public func dismissAlert() {
+		activeAlert = .none
 	}
 }

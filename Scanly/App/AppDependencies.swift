@@ -58,6 +58,7 @@ final class AppDependencies {
 			result: result,
 			pasteboard: SystemPasteboard(),
 			sharing: SystemSharing(),
+			urlOpener: SystemURLOpener(),
 		)
 	}
 
