@@ -79,6 +79,24 @@ struct ScanResultActionsViewModelTests {
 		#expect(env.urlOpener.openedURLs.isEmpty, "The URL must not open until the user confirms")
 	}
 
+	@Test
+	func `performPrimaryAction on a phone scan places the call`() async throws {
+		let (sut, env) = makeSUT(type: .phone("+14155551212"))
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { env.phoneCaller.calledNumbers == ["+14155551212"] }
+	}
+
+	@Test
+	func `performPrimaryAction on a location scan opens it in maps`() {
+		let (sut, env) = makeSUT(type: .location(latitude: 19.4326, longitude: -99.1332))
+
+		sut.performPrimaryAction()
+
+		#expect(env.mapsOpener.openedCoordinates == [.init(latitude: 19.4326, longitude: -99.1332)])
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
@@ -125,13 +143,26 @@ struct ScanResultActionsViewModelTests {
 		let pasteboard = PasteboardSpy()
 		let sharing = SharingSpy()
 		let urlOpener = URLOpeningSpy()
+		let phoneCaller = PhoneCallPlacingSpy()
+		let mapsOpener = MapsOpeningSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
 			pasteboard: pasteboard,
 			sharing: sharing,
 			urlOpener: urlOpener,
+			phoneCaller: phoneCaller,
+			mapsOpener: mapsOpener,
 		)
-		return (viewModel, Environment(pasteboard: pasteboard, sharing: sharing, urlOpener: urlOpener))
+		return (
+			viewModel,
+			Environment(
+				pasteboard: pasteboard,
+				sharing: sharing,
+				urlOpener: urlOpener,
+				phoneCaller: phoneCaller,
+				mapsOpener: mapsOpener,
+			),
+		)
 	}
 
 	/// Bundles the collaborators `makeSUT()` constructs alongside the SUT
@@ -142,6 +173,8 @@ struct ScanResultActionsViewModelTests {
 		let pasteboard: PasteboardSpy
 		let sharing: SharingSpy
 		let urlOpener: URLOpeningSpy
+		let phoneCaller: PhoneCallPlacingSpy
+		let mapsOpener: MapsOpeningSpy
 	}
 
 	// MARK: - Test doubles

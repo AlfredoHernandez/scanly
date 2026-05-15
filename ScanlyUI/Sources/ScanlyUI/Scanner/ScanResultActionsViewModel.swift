@@ -47,18 +47,24 @@ public final class ScanResultActionsViewModel {
 	private let pasteboard: Pasteboard
 	private let sharing: Sharing
 	private let urlOpener: URLOpening
+	private let phoneCaller: PhoneCallPlacing
+	private let mapsOpener: MapsOpening
 
 	public init(
 		result: ScanResult,
 		pasteboard: Pasteboard,
 		sharing: Sharing,
 		urlOpener: URLOpening,
+		phoneCaller: PhoneCallPlacing,
+		mapsOpener: MapsOpening,
 	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
 		self.pasteboard = pasteboard
 		self.sharing = sharing
 		self.urlOpener = urlOpener
+		self.phoneCaller = phoneCaller
+		self.mapsOpener = mapsOpener
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -90,11 +96,17 @@ public final class ScanResultActionsViewModel {
 		case let .openURL(url):
 			activeAlert = .urlConfirmation(url)
 
+		case let .call(number):
+			Task { await phoneCaller.call(number) }
+
+		case let .openMaps(latitude, longitude):
+			mapsOpener.openMaps(latitude: latitude, longitude: longitude)
+
 		case .share:
 			share()
 
 		// Wired in later §10.3 steps.
-		case .connectWiFi, .addContact, .call, .composeEmail, .sendSMS, .openMaps:
+		case .connectWiFi, .addContact, .composeEmail, .sendSMS:
 			break
 		}
 	}

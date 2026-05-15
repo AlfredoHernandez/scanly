@@ -367,6 +367,8 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 				pasteboard: SystemPasteboard(),
 				sharing: SystemSharing(),
 				urlOpener: SystemURLOpener(),
+				phoneCaller: SystemPhoneCaller(),
+				mapsOpener: SystemMapsOpener(),
 			)
 		},
 	)

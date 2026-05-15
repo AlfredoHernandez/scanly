@@ -99,6 +99,8 @@ public struct ScanResultSheet: View {
 			pasteboard: SystemPasteboard(),
 			sharing: SystemSharing(),
 			urlOpener: SystemURLOpener(),
+			phoneCaller: SystemPhoneCaller(),
+			mapsOpener: SystemMapsOpener(),
 		),
 	)
 }
