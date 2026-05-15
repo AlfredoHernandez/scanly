@@ -361,6 +361,8 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 		previewProvider: stub,
 		cameraControls: stub,
 		imageDetector: PreviewImageDetector(),
-		makeScanResultActions: { ScanResultActionsViewModel(result: $0, pasteboard: SystemPasteboard()) },
+		makeScanResultActions: {
+			ScanResultActionsViewModel(result: $0, pasteboard: SystemPasteboard(), sharing: SystemSharing())
+		},
 	)
 }

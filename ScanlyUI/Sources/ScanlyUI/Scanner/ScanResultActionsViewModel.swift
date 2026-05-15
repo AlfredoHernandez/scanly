@@ -6,8 +6,8 @@ import Observation
 import ScanlyEngine
 
 /// Drives the action layer of the scan result sheet (§10.3): the
-/// always-visible secondary actions and, in later steps, the per-type
-/// primary call-to-action.
+/// always-visible secondary actions and the per-type primary
+/// call-to-action.
 ///
 /// One instance is created per presented `ScanResult` and owned by the
 /// sheet for the lifetime of that presentation.
@@ -19,10 +19,18 @@ public final class ScanResultActionsViewModel {
 	public let result: ScanResult
 
 	private let pasteboard: Pasteboard
+	private let sharing: Sharing
 
-	public init(result: ScanResult, pasteboard: Pasteboard) {
+	public init(result: ScanResult, pasteboard: Pasteboard, sharing: Sharing) {
 		self.result = result
 		self.pasteboard = pasteboard
+		self.sharing = sharing
+	}
+
+	/// The per-type primary call-to-action for the presented scan,
+	/// derived per §10.3.2.
+	public var primaryAction: ScanResultPrimaryAction {
+		ScanResultPrimaryAction(for: result)
 	}
 
 	/// Copies the entire scanned payload (`rawContent`) to the pasteboard.
@@ -30,5 +38,24 @@ public final class ScanResultActionsViewModel {
 	/// stays in the inspector (§10.3.1).
 	public func copyRawContent() {
 		pasteboard.copy(result.rawContent)
+	}
+
+	/// Shares the raw scanned payload through the system share sheet.
+	/// This is the always-visible secondary action and, for plain-text
+	/// scans, the primary call-to-action as well (§10.3.2, §10.3.4).
+	public func share() {
+		sharing.share(result.rawContent)
+	}
+
+	/// Fires the per-type primary call-to-action (§10.3.2).
+	public func performPrimaryAction() {
+		switch primaryAction {
+		case .share:
+			share()
+
+		// Wired in later §10.3 steps.
+		case .openURL, .connectWiFi, .addContact, .call, .composeEmail, .sendSMS, .openMaps:
+			break
+		}
 	}
 }
