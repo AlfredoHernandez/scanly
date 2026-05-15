@@ -26,9 +26,11 @@ public struct SystemPhoneCaller: PhoneCallPlacing {
 
 	@discardableResult
 	public func call(_ number: String) async -> Bool {
-		// Scanned numbers often carry spaces, dashes, or parentheses;
-		// keep only the characters a `tel:` URL can dial.
-		let dialable = number.filter { $0.isNumber || "+*#,;".contains($0) }
+		// Strip whitespace only: a literal space makes `URL(string:)`
+		// percent-encode to `%20`, which telephony rejects. RFC 3966
+		// visual separators (`-`, `.`, parentheses) are legal in `tel:`
+		// URLs and pass through untouched.
+		let dialable = number.filter { !$0.isWhitespace }
 		guard !dialable.isEmpty, let url = URL(string: "tel:\(dialable)") else {
 			return false
 		}

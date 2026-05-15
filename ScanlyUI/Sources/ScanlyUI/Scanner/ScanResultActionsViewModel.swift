@@ -97,6 +97,8 @@ public final class ScanResultActionsViewModel {
 			activeAlert = .urlConfirmation(url)
 
 		case let .call(number):
+			// Fire-and-forget: v1.0 surfaces no in-sheet UI for a failed
+			// call (e.g. on a Wi-Fi-only device) — see §10.3.6.
 			Task { await phoneCaller.call(number) }
 
 		case let .openMaps(latitude, longitude):
