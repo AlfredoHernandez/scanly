@@ -37,7 +37,10 @@ public struct SystemContactPresenter: ContactPresenting {
 	public init() {}
 
 	public func presentContact(fromVCard vCard: String) throws {
-		let contacts = try CNContactVCardSerialization.contacts(with: Data(vCard.utf8))
+		// A parse failure or a vCard with no contacts both surface as
+		// `.invalidVCard`, so the protocol only throws `ContactPresentingError`.
+		let contacts = (try? CNContactVCardSerialization.contacts(with: Data(vCard.utf8))) ?? []
+		// A scanned QR vCard carries one contact; v1.0 presents the first.
 		guard let contact = contacts.first else {
 			throw ContactPresentingError.invalidVCard
 		}
@@ -72,7 +75,9 @@ private final class ContactDismisser: NSObject, CNContactViewControllerDelegate 
 		didCompleteWith _: CNContact?,
 	) {
 		MainActor.assumeIsolated {
-			viewController.dismiss(animated: true)
+			// The presented controller is the `UINavigationController`
+			// wrapper, so dismiss it through the presenting controller.
+			viewController.presentingViewController?.dismiss(animated: true)
 			selfReference = nil
 		}
 	}
