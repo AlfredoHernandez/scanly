@@ -88,7 +88,8 @@ public struct ScanResultSheet: View {
 }
 
 #Preview {
-	ScanResultSheet(
+	let urlOpener = SystemURLOpener()
+	return ScanResultSheet(
 		actions: ScanResultActionsViewModel(
 			result: ScanResult(
 				rawContent: "https://example.com/scanly",
@@ -98,11 +99,11 @@ public struct ScanResultSheet: View {
 			),
 			pasteboard: SystemPasteboard(),
 			sharing: SystemSharing(),
-			urlOpener: SystemURLOpener(),
+			urlOpener: urlOpener,
 			phoneCaller: SystemPhoneCaller(),
 			mapsOpener: SystemMapsOpener(),
-			mailComposer: SystemMailComposer(urlOpener: SystemURLOpener()),
-			messageComposer: SystemMessageComposer(urlOpener: SystemURLOpener()),
+			mailComposer: SystemMailComposer(urlOpener: urlOpener),
+			messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 		),
 	)
 }

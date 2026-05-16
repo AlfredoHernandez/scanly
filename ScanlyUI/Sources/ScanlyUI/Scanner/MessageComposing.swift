@@ -64,14 +64,21 @@ public struct SystemMessageComposer: MessageComposing {
 		return composer
 	}
 
-	private static func smsURL(for payload: SMSPayload) -> URL? {
+	/// Builds the `sms:` fallback URL for `payload`. Module-internal
+	/// (not `private`) so the body's percent-encoding stays unit-testable.
+	static func smsURL(for payload: SMSPayload) -> URL? {
 		// `sms:` rejects raw spaces in the number; the body rides along
 		// as iOS's non-standard `&body=` parameter.
 		var string = "sms:" + payload.number.filter { !$0.isWhitespace }
-		if let body = payload.body, !body.isEmpty,
-		   let encoded = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-		{
-			string += "&body=" + encoded
+		if let body = payload.body, !body.isEmpty {
+			// `&` and `+` are valid in a query *string*, so `.urlQueryAllowed`
+			// keeps them — but inside a value they must be encoded, or the
+			// `sms:` handler reads the body as truncated at the first `&`.
+			var bodyAllowed = CharacterSet.urlQueryAllowed
+			bodyAllowed.remove(charactersIn: "&+")
+			if let encoded = body.addingPercentEncoding(withAllowedCharacters: bodyAllowed) {
+				string += "&body=" + encoded
+			}
 		}
 		return URL(string: string)
 	}
