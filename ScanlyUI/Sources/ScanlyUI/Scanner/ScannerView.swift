@@ -371,6 +371,7 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 				phoneCaller: SystemPhoneCaller(),
 				mapsOpener: SystemMapsOpener(),
 				mailComposer: SystemMailComposer(urlOpener: urlOpener),
+				messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 			)
 		},
 	)

@@ -55,6 +55,7 @@ public final class ScanResultActionsViewModel {
 	private let phoneCaller: PhoneCallPlacing
 	private let mapsOpener: MapsOpening
 	private let mailComposer: MailComposing
+	private let messageComposer: MessageComposing
 
 	public init(
 		result: ScanResult,
@@ -64,6 +65,7 @@ public final class ScanResultActionsViewModel {
 		phoneCaller: PhoneCallPlacing,
 		mapsOpener: MapsOpening,
 		mailComposer: MailComposing,
+		messageComposer: MessageComposing,
 	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
@@ -73,6 +75,7 @@ public final class ScanResultActionsViewModel {
 		self.phoneCaller = phoneCaller
 		self.mapsOpener = mapsOpener
 		self.mailComposer = mailComposer
+		self.messageComposer = messageComposer
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -115,11 +118,14 @@ public final class ScanResultActionsViewModel {
 		case let .composeEmail(payload):
 			Task { await composeEmail(payload) }
 
+		case let .sendSMS(payload):
+			Task { await sendSMS(payload) }
+
 		case .share:
 			share()
 
 		// Wired in later §10.3 steps.
-		case .connectWiFi, .addContact, .sendSMS:
+		case .connectWiFi, .addContact:
 			break
 		}
 	}
@@ -132,6 +138,17 @@ public final class ScanResultActionsViewModel {
 			try await mailComposer.compose(payload)
 		} catch {
 			toastMessage = String(localized: "scanner.action.email.unavailable")
+		}
+	}
+
+	/// Presents the message composer for the scanned payload, surfacing a
+	/// toast when the device can compose neither an in-app message nor an
+	/// `sms:` URL (§10.3.2).
+	private func sendSMS(_ payload: SMSPayload) async {
+		do {
+			try await messageComposer.compose(payload)
+		} catch {
+			toastMessage = String(localized: "scanner.action.sms.unavailable")
 		}
 	}
 

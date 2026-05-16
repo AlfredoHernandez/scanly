@@ -118,6 +118,27 @@ struct ScanResultActionsViewModelTests {
 		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.email.unavailable") }
 	}
 
+	@Test
+	func `performPrimaryAction on an sms scan opens the message composer`() async throws {
+		let payload = SMSPayload(number: "+14155551212", body: "hi")
+		let (sut, env) = makeSUT(type: .sms(payload))
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { env.messageComposer.composedPayloads == [payload] }
+		#expect(sut.toastMessage == nil, "A successful compose must not raise the error toast")
+	}
+
+	@Test
+	func `performPrimaryAction on an sms scan shows a toast when messaging is unavailable`() async throws {
+		let (sut, env) = makeSUT(type: .sms(SMSPayload(number: "+14155551212")))
+		env.messageComposer.composeError = .notAvailable
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.sms.unavailable") }
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
@@ -167,6 +188,7 @@ struct ScanResultActionsViewModelTests {
 		let phoneCaller = PhoneCallPlacingSpy()
 		let mapsOpener = MapsOpeningSpy()
 		let mailComposer = MailComposingSpy()
+		let messageComposer = MessageComposingSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
 			pasteboard: pasteboard,
@@ -175,6 +197,7 @@ struct ScanResultActionsViewModelTests {
 			phoneCaller: phoneCaller,
 			mapsOpener: mapsOpener,
 			mailComposer: mailComposer,
+			messageComposer: messageComposer,
 		)
 		return (
 			viewModel,
@@ -185,6 +208,7 @@ struct ScanResultActionsViewModelTests {
 				phoneCaller: phoneCaller,
 				mapsOpener: mapsOpener,
 				mailComposer: mailComposer,
+				messageComposer: messageComposer,
 			),
 		)
 	}
@@ -200,6 +224,7 @@ struct ScanResultActionsViewModelTests {
 		let phoneCaller: PhoneCallPlacingSpy
 		let mapsOpener: MapsOpeningSpy
 		let mailComposer: MailComposingSpy
+		let messageComposer: MessageComposingSpy
 	}
 
 	// MARK: - Test doubles
@@ -219,6 +244,19 @@ struct ScanResultActionsViewModelTests {
 		var composeError: MailComposingError?
 
 		func compose(_ payload: EmailPayload) async throws {
+			composedPayloads.append(payload)
+			if let composeError {
+				throw composeError
+			}
+		}
+	}
+
+	@MainActor
+	private final class MessageComposingSpy: MessageComposing {
+		private(set) var composedPayloads: [SMSPayload] = []
+		var composeError: MessageComposingError?
+
+		func compose(_ payload: SMSPayload) async throws {
 			composedPayloads.append(payload)
 			if let composeError {
 				throw composeError

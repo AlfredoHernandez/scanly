@@ -102,6 +102,7 @@ public struct ScanResultSheet: View {
 			phoneCaller: SystemPhoneCaller(),
 			mapsOpener: SystemMapsOpener(),
 			mailComposer: SystemMailComposer(urlOpener: SystemURLOpener()),
+			messageComposer: SystemMessageComposer(urlOpener: SystemURLOpener()),
 		),
 	)
 }

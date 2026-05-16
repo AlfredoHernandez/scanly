@@ -413,6 +413,23 @@
         }
       }
     },
+    "scanner.action.sms.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messaging is not set up on this device"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La mensajería no está configurada en este dispositivo"
+          }
+        }
+      }
+    },
     "scanner.alert.cancel" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -63,6 +63,7 @@ final class AppDependencies {
 			phoneCaller: SystemPhoneCaller(),
 			mapsOpener: SystemMapsOpener(),
 			mailComposer: SystemMailComposer(urlOpener: urlOpener),
+			messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 		)
 	}
 
