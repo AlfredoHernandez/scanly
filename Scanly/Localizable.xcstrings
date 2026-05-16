@@ -328,6 +328,23 @@
         }
       }
     },
+    "scanner.action.email.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email is not set up on this device"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El correo no está configurado en este dispositivo"
+          }
+        }
+      }
+    },
     "scanner.action.open_maps" : {
       "extractionState" : "manual",
       "localizations" : {

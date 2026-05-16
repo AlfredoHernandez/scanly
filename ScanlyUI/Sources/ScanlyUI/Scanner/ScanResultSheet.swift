@@ -101,6 +101,7 @@ public struct ScanResultSheet: View {
 			urlOpener: SystemURLOpener(),
 			phoneCaller: SystemPhoneCaller(),
 			mapsOpener: SystemMapsOpener(),
+			mailComposer: SystemMailComposer(urlOpener: SystemURLOpener()),
 		),
 	)
 }

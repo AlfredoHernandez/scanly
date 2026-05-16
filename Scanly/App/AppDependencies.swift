@@ -54,13 +54,15 @@ final class AppDependencies {
 	/// sheet. A fresh instance is created for each presented `ScanResult`
 	/// so action state never leaks across scans.
 	func makeScanResultActionsViewModel(for result: ScanResult) -> ScanResultActionsViewModel {
-		ScanResultActionsViewModel(
+		let urlOpener = SystemURLOpener()
+		return ScanResultActionsViewModel(
 			result: result,
 			pasteboard: SystemPasteboard(),
 			sharing: SystemSharing(),
-			urlOpener: SystemURLOpener(),
+			urlOpener: urlOpener,
 			phoneCaller: SystemPhoneCaller(),
 			mapsOpener: SystemMapsOpener(),
+			mailComposer: SystemMailComposer(urlOpener: urlOpener),
 		)
 	}
 

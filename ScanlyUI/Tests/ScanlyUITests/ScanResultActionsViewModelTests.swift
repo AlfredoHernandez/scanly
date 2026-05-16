@@ -97,6 +97,26 @@ struct ScanResultActionsViewModelTests {
 		#expect(env.mapsOpener.openedCoordinates == [.init(latitude: 19.4326, longitude: -99.1332)])
 	}
 
+	@Test
+	func `performPrimaryAction on an email scan opens the mail composer`() async throws {
+		let payload = EmailPayload(address: "me@example.com", subject: "Hi", body: "Hello")
+		let (sut, env) = makeSUT(type: .email(payload))
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { env.mailComposer.composedPayloads == [payload] }
+	}
+
+	@Test
+	func `performPrimaryAction on an email scan shows a toast when mail is unavailable`() async throws {
+		let (sut, env) = makeSUT(type: .email(EmailPayload(address: "me@example.com")))
+		env.mailComposer.composeError = .notAvailable
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.email.unavailable") }
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
@@ -145,6 +165,7 @@ struct ScanResultActionsViewModelTests {
 		let urlOpener = URLOpeningSpy()
 		let phoneCaller = PhoneCallPlacingSpy()
 		let mapsOpener = MapsOpeningSpy()
+		let mailComposer = MailComposingSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
 			pasteboard: pasteboard,
@@ -152,6 +173,7 @@ struct ScanResultActionsViewModelTests {
 			urlOpener: urlOpener,
 			phoneCaller: phoneCaller,
 			mapsOpener: mapsOpener,
+			mailComposer: mailComposer,
 		)
 		return (
 			viewModel,
@@ -161,6 +183,7 @@ struct ScanResultActionsViewModelTests {
 				urlOpener: urlOpener,
 				phoneCaller: phoneCaller,
 				mapsOpener: mapsOpener,
+				mailComposer: mailComposer,
 			),
 		)
 	}
@@ -175,6 +198,7 @@ struct ScanResultActionsViewModelTests {
 		let urlOpener: URLOpeningSpy
 		let phoneCaller: PhoneCallPlacingSpy
 		let mapsOpener: MapsOpeningSpy
+		let mailComposer: MailComposingSpy
 	}
 
 	// MARK: - Test doubles
@@ -185,6 +209,19 @@ struct ScanResultActionsViewModelTests {
 
 		func share(_ text: String) {
 			sharedItems.append(text)
+		}
+	}
+
+	@MainActor
+	private final class MailComposingSpy: MailComposing {
+		private(set) var composedPayloads: [EmailPayload] = []
+		var composeError: MailComposingError?
+
+		func compose(_ payload: EmailPayload) async throws {
+			composedPayloads.append(payload)
+			if let composeError {
+				throw composeError
+			}
 		}
 	}
 }

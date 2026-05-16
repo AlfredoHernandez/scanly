@@ -362,13 +362,15 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 		cameraControls: stub,
 		imageDetector: PreviewImageDetector(),
 		makeScanResultActions: {
-			ScanResultActionsViewModel(
+			let urlOpener = SystemURLOpener()
+			return ScanResultActionsViewModel(
 				result: $0,
 				pasteboard: SystemPasteboard(),
 				sharing: SystemSharing(),
-				urlOpener: SystemURLOpener(),
+				urlOpener: urlOpener,
 				phoneCaller: SystemPhoneCaller(),
 				mapsOpener: SystemMapsOpener(),
+				mailComposer: SystemMailComposer(urlOpener: urlOpener),
 			)
 		},
 	)

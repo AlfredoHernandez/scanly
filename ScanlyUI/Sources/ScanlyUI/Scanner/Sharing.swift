@@ -45,20 +45,4 @@ public struct SystemSharing: Sharing {
 		}
 		presenter.present(activityViewController, animated: true)
 	}
-
-	/// Topmost view controller of the foreground-active window scene, or
-	/// `nil` when no scene is currently presentable.
-	private func foregroundPresenter() -> UIViewController? {
-		var presenter = UIApplication.shared.connectedScenes
-			.compactMap { $0 as? UIWindowScene }
-			.first { $0.activationState == .foregroundActive }?
-			.keyWindow?
-			.rootViewController
-		// Skip a controller that is mid-dismissal: presenting over it
-		// is undefined behaviour and can trap.
-		while let presented = presenter?.presentedViewController, !presented.isBeingDismissed {
-			presenter = presented
-		}
-		return presenter
-	}
 }

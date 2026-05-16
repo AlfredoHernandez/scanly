@@ -44,11 +44,17 @@ public final class ScanResultActionsViewModel {
 	/// The alert the sheet should present, or `.none`.
 	public private(set) var activeAlert: Alert = .none
 
+	/// A transient error message for the sheet's toast, or `nil` when no
+	/// toast is showing. Set when a fire-and-forget action fails
+	/// (§10.3.5).
+	public private(set) var toastMessage: String?
+
 	private let pasteboard: Pasteboard
 	private let sharing: Sharing
 	private let urlOpener: URLOpening
 	private let phoneCaller: PhoneCallPlacing
 	private let mapsOpener: MapsOpening
+	private let mailComposer: MailComposing
 
 	public init(
 		result: ScanResult,
@@ -57,6 +63,7 @@ public final class ScanResultActionsViewModel {
 		urlOpener: URLOpening,
 		phoneCaller: PhoneCallPlacing,
 		mapsOpener: MapsOpening,
+		mailComposer: MailComposing,
 	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
@@ -65,6 +72,7 @@ public final class ScanResultActionsViewModel {
 		self.urlOpener = urlOpener
 		self.phoneCaller = phoneCaller
 		self.mapsOpener = mapsOpener
+		self.mailComposer = mailComposer
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -104,12 +112,26 @@ public final class ScanResultActionsViewModel {
 		case let .openMaps(latitude, longitude):
 			mapsOpener.openMaps(latitude: latitude, longitude: longitude)
 
+		case let .composeEmail(payload):
+			Task { await composeEmail(payload) }
+
 		case .share:
 			share()
 
 		// Wired in later §10.3 steps.
-		case .connectWiFi, .addContact, .composeEmail, .sendSMS:
+		case .connectWiFi, .addContact, .sendSMS:
 			break
+		}
+	}
+
+	/// Presents the email composer for the scanned payload, surfacing a
+	/// toast when the device can compose neither in-app mail nor a
+	/// `mailto:` URL (§10.3.2).
+	private func composeEmail(_ payload: EmailPayload) async {
+		do {
+			try await mailComposer.compose(payload)
+		} catch {
+			toastMessage = String(localized: "scanner.action.email.unavailable")
 		}
 	}
 
