@@ -56,6 +56,7 @@ public final class ScanResultActionsViewModel {
 	private let mapsOpener: MapsOpening
 	private let mailComposer: MailComposing
 	private let messageComposer: MessageComposing
+	private let wifiConnector: WiFiConnecting
 
 	public init(
 		result: ScanResult,
@@ -66,6 +67,7 @@ public final class ScanResultActionsViewModel {
 		mapsOpener: MapsOpening,
 		mailComposer: MailComposing,
 		messageComposer: MessageComposing,
+		wifiConnector: WiFiConnecting,
 	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
@@ -76,6 +78,7 @@ public final class ScanResultActionsViewModel {
 		self.mapsOpener = mapsOpener
 		self.mailComposer = mailComposer
 		self.messageComposer = messageComposer
+		self.wifiConnector = wifiConnector
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -121,11 +124,14 @@ public final class ScanResultActionsViewModel {
 		case let .sendSMS(payload):
 			Task { await sendSMS(payload) }
 
+		case let .connectWiFi(credentials):
+			Task { await connectWiFi(credentials) }
+
 		case .share:
 			share()
 
-		// Wired in later §10.3 steps.
-		case .connectWiFi, .addContact:
+		// Wired in the next §10.3 step.
+		case .addContact:
 			break
 		}
 	}
@@ -149,6 +155,19 @@ public final class ScanResultActionsViewModel {
 			try await messageComposer.compose(payload)
 		} catch {
 			toastMessage = String(localized: "scanner.action.sms.unavailable")
+		}
+	}
+
+	/// Joins the scanned Wi-Fi network. A failed attempt raises a toast;
+	/// a user-cancelled prompt and an already-joined network both leave
+	/// the sheet quietly open (§10.3.5).
+	private func connectWiFi(_ credentials: WiFiCredentials) async {
+		switch await wifiConnector.connect(credentials) {
+		case .connected, .userCancelled:
+			break
+
+		case .failed:
+			toastMessage = String(localized: "scanner.action.wifi.failed")
 		}
 	}
 

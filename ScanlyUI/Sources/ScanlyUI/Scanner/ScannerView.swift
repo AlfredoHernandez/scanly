@@ -372,6 +372,7 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 				mapsOpener: SystemMapsOpener(),
 				mailComposer: SystemMailComposer(urlOpener: urlOpener),
 				messageComposer: SystemMessageComposer(urlOpener: urlOpener),
+				wifiConnector: SystemWiFiConnector(),
 			)
 		},
 	)

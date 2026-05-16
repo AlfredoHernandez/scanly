@@ -139,6 +139,38 @@ struct ScanResultActionsViewModelTests {
 		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.sms.unavailable") }
 	}
 
+	@Test
+	func `performPrimaryAction on a wifi scan applies the network configuration`() async throws {
+		let credentials = WiFiCredentials(ssid: "HomeNet", password: "s3cret", security: .wpa)
+		let (sut, env) = makeSUT(type: .wifi(credentials))
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { env.wifiConnector.connectedCredentials == [credentials] }
+		#expect(sut.toastMessage == nil, "A successful connection must not raise the error toast")
+	}
+
+	@Test
+	func `performPrimaryAction on a wifi scan shows a toast when the connection fails`() async throws {
+		let (sut, env) = makeSUT(type: .wifi(WiFiCredentials(ssid: "HomeNet", security: .none)))
+		env.wifiConnector.outcome = .failed
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.wifi.failed") }
+	}
+
+	@Test
+	func `performPrimaryAction on a wifi scan stays quiet when the user cancels the prompt`() async throws {
+		let (sut, env) = makeSUT(type: .wifi(WiFiCredentials(ssid: "HomeNet", security: .none)))
+		env.wifiConnector.outcome = .userCancelled
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { !env.wifiConnector.connectedCredentials.isEmpty }
+		#expect(sut.toastMessage == nil, "A user-cancelled prompt must not raise the error toast")
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
@@ -225,6 +257,7 @@ struct ScanResultActionsViewModelTests {
 		let mapsOpener = MapsOpeningSpy()
 		let mailComposer = MailComposingSpy()
 		let messageComposer = MessageComposingSpy()
+		let wifiConnector = WiFiConnectingSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
 			pasteboard: pasteboard,
@@ -234,6 +267,7 @@ struct ScanResultActionsViewModelTests {
 			mapsOpener: mapsOpener,
 			mailComposer: mailComposer,
 			messageComposer: messageComposer,
+			wifiConnector: wifiConnector,
 		)
 		return (
 			viewModel,
@@ -245,6 +279,7 @@ struct ScanResultActionsViewModelTests {
 				mapsOpener: mapsOpener,
 				mailComposer: mailComposer,
 				messageComposer: messageComposer,
+				wifiConnector: wifiConnector,
 			),
 		)
 	}
@@ -261,6 +296,7 @@ struct ScanResultActionsViewModelTests {
 		let mapsOpener: MapsOpeningSpy
 		let mailComposer: MailComposingSpy
 		let messageComposer: MessageComposingSpy
+		let wifiConnector: WiFiConnectingSpy
 	}
 
 	// MARK: - Test doubles

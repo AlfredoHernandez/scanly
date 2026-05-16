@@ -430,6 +430,23 @@
         }
       }
     },
+    "scanner.action.wifi.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't connect to this Wi-Fi network"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo conectar a esta red Wi-Fi"
+          }
+        }
+      }
+    },
     "scanner.alert.cancel" : {
       "extractionState" : "manual",
       "localizations" : {
