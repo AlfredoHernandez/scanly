@@ -57,6 +57,7 @@ public final class ScanResultActionsViewModel {
 	private let mailComposer: MailComposing
 	private let messageComposer: MessageComposing
 	private let wifiConnector: WiFiConnecting
+	private let contactPresenter: ContactPresenting
 
 	public init(
 		result: ScanResult,
@@ -68,6 +69,7 @@ public final class ScanResultActionsViewModel {
 		mailComposer: MailComposing,
 		messageComposer: MessageComposing,
 		wifiConnector: WiFiConnecting,
+		contactPresenter: ContactPresenting,
 	) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
@@ -79,6 +81,7 @@ public final class ScanResultActionsViewModel {
 		self.mailComposer = mailComposer
 		self.messageComposer = messageComposer
 		self.wifiConnector = wifiConnector
+		self.contactPresenter = contactPresenter
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -127,12 +130,11 @@ public final class ScanResultActionsViewModel {
 		case let .connectWiFi(credentials):
 			Task { await connectWiFi(credentials) }
 
+		case let .addContact(vCard):
+			addContact(fromVCard: vCard)
+
 		case .share:
 			share()
-
-		// Wired in the next §10.3 step.
-		case .addContact:
-			break
 		}
 	}
 
@@ -168,6 +170,16 @@ public final class ScanResultActionsViewModel {
 
 		case .failed:
 			toastMessage = String(localized: "scanner.action.wifi.failed")
+		}
+	}
+
+	/// Presents the system new-contact editor for the scanned vCard,
+	/// surfacing a toast when the vCard cannot be parsed (§10.3.2).
+	private func addContact(fromVCard vCard: String) {
+		do {
+			try contactPresenter.presentContact(fromVCard: vCard)
+		} catch {
+			toastMessage = String(localized: "scanner.action.contact.invalid")
 		}
 	}
 

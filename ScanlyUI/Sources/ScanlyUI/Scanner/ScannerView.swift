@@ -373,6 +373,7 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 				mailComposer: SystemMailComposer(urlOpener: urlOpener),
 				messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 				wifiConnector: SystemWiFiConnector(),
+				contactPresenter: SystemContactPresenter(),
 			)
 		},
 	)

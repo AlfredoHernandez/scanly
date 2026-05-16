@@ -35,6 +35,23 @@
           }
         }
       }
+    },
+    "NSContactsUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanly adds scanned contacts to your address book."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanly agrega los contactos escaneados a tu agenda."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

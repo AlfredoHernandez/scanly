@@ -65,6 +65,7 @@ final class AppDependencies {
 			mailComposer: SystemMailComposer(urlOpener: urlOpener),
 			messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 			wifiConnector: SystemWiFiConnector(),
+			contactPresenter: SystemContactPresenter(),
 		)
 	}
 

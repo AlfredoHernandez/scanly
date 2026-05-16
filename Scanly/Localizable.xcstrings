@@ -311,6 +311,23 @@
         }
       }
     },
+    "scanner.action.contact.invalid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this contact card"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer esta tarjeta de contacto"
+          }
+        }
+      }
+    },
     "scanner.action.copy" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -108,6 +108,7 @@ public struct ScanResultSheet: View {
 			mailComposer: SystemMailComposer(urlOpener: urlOpener),
 			messageComposer: SystemMessageComposer(urlOpener: urlOpener),
 			wifiConnector: SystemWiFiConnector(),
+			contactPresenter: SystemContactPresenter(),
 		),
 	)
 }

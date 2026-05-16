@@ -171,6 +171,27 @@ struct ScanResultActionsViewModelTests {
 		#expect(sut.toastMessage == nil, "A user-cancelled prompt must not raise the error toast")
 	}
 
+	@Test
+	func `performPrimaryAction on a contact scan presents the new-contact editor`() {
+		let vCard = "BEGIN:VCARD\nFN:Jane\nEND:VCARD"
+		let (sut, env) = makeSUT(type: .contact(vCard: vCard))
+
+		sut.performPrimaryAction()
+
+		#expect(env.contactPresenter.presentedVCards == [vCard])
+		#expect(sut.toastMessage == nil, "A presentable contact must not raise the error toast")
+	}
+
+	@Test
+	func `performPrimaryAction on a contact scan shows a toast when the vCard is invalid`() {
+		let (sut, env) = makeSUT(type: .contact(vCard: "not a vcard"))
+		env.contactPresenter.presentError = .invalidVCard
+
+		sut.performPrimaryAction()
+
+		#expect(sut.toastMessage == String(localized: "scanner.action.contact.invalid"))
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
@@ -258,6 +279,7 @@ struct ScanResultActionsViewModelTests {
 		let mailComposer = MailComposingSpy()
 		let messageComposer = MessageComposingSpy()
 		let wifiConnector = WiFiConnectingSpy()
+		let contactPresenter = ContactPresentingSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
 			pasteboard: pasteboard,
@@ -268,6 +290,7 @@ struct ScanResultActionsViewModelTests {
 			mailComposer: mailComposer,
 			messageComposer: messageComposer,
 			wifiConnector: wifiConnector,
+			contactPresenter: contactPresenter,
 		)
 		return (
 			viewModel,
@@ -280,6 +303,7 @@ struct ScanResultActionsViewModelTests {
 				mailComposer: mailComposer,
 				messageComposer: messageComposer,
 				wifiConnector: wifiConnector,
+				contactPresenter: contactPresenter,
 			),
 		)
 	}
@@ -297,6 +321,7 @@ struct ScanResultActionsViewModelTests {
 		let mailComposer: MailComposingSpy
 		let messageComposer: MessageComposingSpy
 		let wifiConnector: WiFiConnectingSpy
+		let contactPresenter: ContactPresentingSpy
 	}
 
 	// MARK: - Test doubles
@@ -332,6 +357,19 @@ struct ScanResultActionsViewModelTests {
 			composedPayloads.append(payload)
 			if let composeError {
 				throw composeError
+			}
+		}
+	}
+
+	@MainActor
+	private final class ContactPresentingSpy: ContactPresenting {
+		private(set) var presentedVCards: [String] = []
+		var presentError: ContactPresentingError?
+
+		func presentContact(fromVCard vCard: String) throws {
+			presentedVCards.append(vCard)
+			if let presentError {
+				throw presentError
 			}
 		}
 	}
