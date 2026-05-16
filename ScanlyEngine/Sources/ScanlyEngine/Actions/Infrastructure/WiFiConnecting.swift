@@ -48,28 +48,38 @@ public struct SystemWiFiConnector: WiFiConnecting {
 		}
 	}
 
-	private nonisolated static func configuration(for credentials: WiFiCredentials) -> NEHotspotConfiguration {
-		guard credentials.security != .none, let password = credentials.password else {
-			return NEHotspotConfiguration(ssid: credentials.ssid)
+	/// Builds the hotspot configuration for `credentials`. Module-internal
+	/// (not `private`) so the hidden-network and security mapping stay
+	/// unit-testable.
+	nonisolated static func configuration(for credentials: WiFiCredentials) -> NEHotspotConfiguration {
+		let configuration = if credentials.security != .none, let password = credentials.password {
+			NEHotspotConfiguration(
+				ssid: credentials.ssid,
+				passphrase: password,
+				isWEP: credentials.security == .wep,
+			)
+		} else {
+			NEHotspotConfiguration(ssid: credentials.ssid)
 		}
-		return NEHotspotConfiguration(
-			ssid: credentials.ssid,
-			passphrase: password,
-			isWEP: credentials.security == .wep,
-		)
+		// A hidden network is only found when the system actively scans
+		// for the SSID, which `hidden` opts into.
+		configuration.hidden = credentials.isHidden
+		return configuration
 	}
 
-	private nonisolated static func outcome(for error: Error?) -> WiFiConnectionOutcome {
+	/// Normalizes an `apply` callback error into a `WiFiConnectionOutcome`
+	/// (§10.3.5). Module-internal so the mapping stays unit-testable.
+	nonisolated static func outcome(for error: Error?) -> WiFiConnectionOutcome {
 		guard let error else { return .connected }
 		let nsError = error as NSError
 		guard nsError.domain == NEHotspotConfigurationErrorDomain else { return .failed }
-		switch nsError.code {
+		switch NEHotspotConfigurationError(rawValue: nsError.code) {
 		// "Already associated" means the device is already on the
 		// network — success from the user's point of view (§10.3.5).
-		case NEHotspotConfigurationError.alreadyAssociated.rawValue:
+		case .alreadyAssociated:
 			return .connected
 
-		case NEHotspotConfigurationError.userDenied.rawValue:
+		case .userDenied:
 			return .userCancelled
 
 		default:
