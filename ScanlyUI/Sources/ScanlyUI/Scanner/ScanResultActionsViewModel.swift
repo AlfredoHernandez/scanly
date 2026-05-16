@@ -36,7 +36,6 @@ public final class ScanResultActionsViewModel {
 	/// The system ports the result-sheet actions depend on, bundled into
 	/// one value so the view model's initializer stays a two-parameter
 	/// call as the action set grows.
-	@MainActor
 	public struct Dependencies {
 		public let pasteboard: Pasteboard
 		public let sharing: Sharing
