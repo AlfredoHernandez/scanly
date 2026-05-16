@@ -17,6 +17,10 @@ struct ToastView: View {
 			.padding(.vertical, 12)
 			.background(.regularMaterial, in: .capsule)
 			.shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+			// VoiceOver hears the message through the announcement posted
+			// when the toast appears; the banner itself stays out of the
+			// element tree so it is not spoken a second time.
+			.accessibilityHidden(true)
 	}
 }
 
@@ -45,6 +49,9 @@ private struct ToastModifier: ViewModifier {
 						.padding(.bottom, 24)
 						.transition(.move(edge: .bottom).combined(with: .opacity))
 						.task(id: message) {
+							// A transient banner never receives VoiceOver focus,
+							// so announce the message explicitly when it appears.
+							AccessibilityNotification.Announcement(message).post()
 							// A fresh `message` cancels and restarts this task,
 							// so each toast gets its own full dwell time.
 							try? await Task.sleep(for: .seconds(3))

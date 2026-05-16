@@ -171,7 +171,7 @@ public final class ScanResultActionsViewModel {
 		activeAlert = .none
 	}
 
-	/// Clears the error toast. Invoked by the toast's auto-dismiss timer.
+	/// Invoked by the toast's auto-dismiss timer to clear the error toast.
 	public func dismissToast() {
 		toastMessage = nil
 	}

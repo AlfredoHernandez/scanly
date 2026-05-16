@@ -191,7 +191,16 @@ struct ScanResultActionsViewModelTests {
 	}
 
 	@Test
-	func `a failure after the toast was dismissed raises the toast again`() async throws {
+	func `dismissToast is a no-op when no toast is showing`() {
+		let (sut, _) = makeSUT()
+
+		sut.dismissToast()
+
+		#expect(sut.toastMessage == nil)
+	}
+
+	@Test
+	func `dismissToast lets a later failure raise the toast again`() async throws {
 		let (sut, env) = makeSUT(type: .email(EmailPayload(address: "me@example.com")))
 		env.mailComposer.composeError = .notAvailable
 		sut.performPrimaryAction()
@@ -200,7 +209,7 @@ struct ScanResultActionsViewModelTests {
 
 		sut.performPrimaryAction()
 
-		try await waitUntil { sut.toastMessage != nil }
+		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.email.unavailable") }
 	}
 
 	// MARK: - Helpers
