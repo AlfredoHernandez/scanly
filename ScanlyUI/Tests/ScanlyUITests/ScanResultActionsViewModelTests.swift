@@ -105,6 +105,7 @@ struct ScanResultActionsViewModelTests {
 		sut.performPrimaryAction()
 
 		try await waitUntil { env.mailComposer.composedPayloads == [payload] }
+		#expect(sut.toastMessage == nil, "A successful compose must not raise the error toast")
 	}
 
 	@Test
