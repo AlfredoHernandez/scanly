@@ -33,6 +33,44 @@ public final class ScanResultActionsViewModel {
 		}
 	}
 
+	/// The system ports the result-sheet actions depend on, bundled into
+	/// one value so the view model's initializer stays a two-parameter
+	/// call as the action set grows.
+	@MainActor
+	public struct Dependencies {
+		public let pasteboard: Pasteboard
+		public let sharing: Sharing
+		public let urlOpener: URLOpening
+		public let phoneCaller: PhoneCallPlacing
+		public let mapsOpener: MapsOpening
+		public let mailComposer: MailComposing
+		public let messageComposer: MessageComposing
+		public let wifiConnector: WiFiConnecting
+		public let contactPresenter: ContactPresenting
+
+		public init(
+			pasteboard: Pasteboard,
+			sharing: Sharing,
+			urlOpener: URLOpening,
+			phoneCaller: PhoneCallPlacing,
+			mapsOpener: MapsOpening,
+			mailComposer: MailComposing,
+			messageComposer: MessageComposing,
+			wifiConnector: WiFiConnecting,
+			contactPresenter: ContactPresenting,
+		) {
+			self.pasteboard = pasteboard
+			self.sharing = sharing
+			self.urlOpener = urlOpener
+			self.phoneCaller = phoneCaller
+			self.mapsOpener = mapsOpener
+			self.mailComposer = mailComposer
+			self.messageComposer = messageComposer
+			self.wifiConnector = wifiConnector
+			self.contactPresenter = contactPresenter
+		}
+	}
+
 	/// The scan the sheet is presenting. Drives the detail content and
 	/// the derived primary action.
 	public let result: ScanResult
@@ -49,39 +87,12 @@ public final class ScanResultActionsViewModel {
 	/// (§10.3.5).
 	public private(set) var toastMessage: String?
 
-	private let pasteboard: Pasteboard
-	private let sharing: Sharing
-	private let urlOpener: URLOpening
-	private let phoneCaller: PhoneCallPlacing
-	private let mapsOpener: MapsOpening
-	private let mailComposer: MailComposing
-	private let messageComposer: MessageComposing
-	private let wifiConnector: WiFiConnecting
-	private let contactPresenter: ContactPresenting
+	private let dependencies: Dependencies
 
-	public init(
-		result: ScanResult,
-		pasteboard: Pasteboard,
-		sharing: Sharing,
-		urlOpener: URLOpening,
-		phoneCaller: PhoneCallPlacing,
-		mapsOpener: MapsOpening,
-		mailComposer: MailComposing,
-		messageComposer: MessageComposing,
-		wifiConnector: WiFiConnecting,
-		contactPresenter: ContactPresenting,
-	) {
+	public init(result: ScanResult, dependencies: Dependencies) {
 		self.result = result
 		primaryAction = ScanResultPrimaryAction(for: result)
-		self.pasteboard = pasteboard
-		self.sharing = sharing
-		self.urlOpener = urlOpener
-		self.phoneCaller = phoneCaller
-		self.mapsOpener = mapsOpener
-		self.mailComposer = mailComposer
-		self.messageComposer = messageComposer
-		self.wifiConnector = wifiConnector
-		self.contactPresenter = contactPresenter
+		self.dependencies = dependencies
 	}
 
 	/// Whether an alert is blocking the sheet. The sheet disables
@@ -95,14 +106,14 @@ public final class ScanResultActionsViewModel {
 	/// This is the secondary "copy all" action; granular per-field copy
 	/// stays in the inspector (§10.3.1).
 	public func copyRawContent() {
-		pasteboard.copy(result.rawContent)
+		dependencies.pasteboard.copy(result.rawContent)
 	}
 
 	/// Shares the raw scanned payload through the system share sheet.
 	/// This is the always-visible secondary action and, for plain-text
 	/// scans, the primary call-to-action as well (§10.3.2, §10.3.4).
 	public func share() {
-		sharing.share(result.rawContent)
+		dependencies.sharing.share(result.rawContent)
 	}
 
 	/// Fires the per-type primary call-to-action (§10.3.2). Opening a URL
@@ -116,10 +127,10 @@ public final class ScanResultActionsViewModel {
 		case let .call(number):
 			// Fire-and-forget: v1.0 surfaces no in-sheet UI for a failed
 			// call (e.g. on a Wi-Fi-only device) — see §10.3.6.
-			Task { await phoneCaller.call(number) }
+			Task { await dependencies.phoneCaller.call(number) }
 
 		case let .openMaps(latitude, longitude):
-			mapsOpener.openMaps(latitude: latitude, longitude: longitude)
+			dependencies.mapsOpener.openMaps(latitude: latitude, longitude: longitude)
 
 		case let .composeEmail(payload):
 			Task { await composeEmail(payload) }
@@ -143,7 +154,7 @@ public final class ScanResultActionsViewModel {
 	/// `mailto:` URL (§10.3.2).
 	private func composeEmail(_ payload: EmailPayload) async {
 		do {
-			try await mailComposer.compose(payload)
+			try await dependencies.mailComposer.compose(payload)
 		} catch {
 			toastMessage = String(localized: "scanner.action.email.unavailable")
 		}
@@ -154,7 +165,7 @@ public final class ScanResultActionsViewModel {
 	/// `sms:` URL (§10.3.2).
 	private func sendSMS(_ payload: SMSPayload) async {
 		do {
-			try await messageComposer.compose(payload)
+			try await dependencies.messageComposer.compose(payload)
 		} catch {
 			toastMessage = String(localized: "scanner.action.sms.unavailable")
 		}
@@ -164,7 +175,7 @@ public final class ScanResultActionsViewModel {
 	/// a user-cancelled prompt and an already-joined network both leave
 	/// the sheet quietly open (§10.3.5).
 	private func connectWiFi(_ credentials: WiFiCredentials) async {
-		switch await wifiConnector.connect(credentials) {
+		switch await dependencies.wifiConnector.connect(credentials) {
 		case .connected, .userCancelled:
 			break
 
@@ -177,7 +188,7 @@ public final class ScanResultActionsViewModel {
 	/// surfacing a toast when the vCard cannot be parsed (§10.3.2).
 	private func addContact(fromVCard vCard: String) {
 		do {
-			try contactPresenter.presentContact(fromVCard: vCard)
+			try dependencies.contactPresenter.presentContact(fromVCard: vCard)
 		} catch {
 			toastMessage = String(localized: "scanner.action.contact.invalid")
 		}
@@ -194,7 +205,7 @@ public final class ScanResultActionsViewModel {
 	public func confirmURLOpen() {
 		guard case let .urlConfirmation(url) = activeAlert else { return }
 		activeAlert = .none
-		Task { await urlOpener.open(url) }
+		Task { await dependencies.urlOpener.open(url) }
 	}
 
 	/// Dismisses the active alert without performing its action.

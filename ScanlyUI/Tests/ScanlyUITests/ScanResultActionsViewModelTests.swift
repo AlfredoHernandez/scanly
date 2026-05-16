@@ -282,15 +282,17 @@ struct ScanResultActionsViewModelTests {
 		let contactPresenter = ContactPresentingSpy()
 		let viewModel = ScanResultActionsViewModel(
 			result: anyResult(rawContent: rawContent, type: type),
-			pasteboard: pasteboard,
-			sharing: sharing,
-			urlOpener: urlOpener,
-			phoneCaller: phoneCaller,
-			mapsOpener: mapsOpener,
-			mailComposer: mailComposer,
-			messageComposer: messageComposer,
-			wifiConnector: wifiConnector,
-			contactPresenter: contactPresenter,
+			dependencies: ScanResultActionsViewModel.Dependencies(
+				pasteboard: pasteboard,
+				sharing: sharing,
+				urlOpener: urlOpener,
+				phoneCaller: phoneCaller,
+				mapsOpener: mapsOpener,
+				mailComposer: mailComposer,
+				messageComposer: messageComposer,
+				wifiConnector: wifiConnector,
+				contactPresenter: contactPresenter,
+			),
 		)
 		return (
 			viewModel,

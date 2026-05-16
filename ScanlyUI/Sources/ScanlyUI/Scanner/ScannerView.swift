@@ -365,15 +365,17 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 			let urlOpener = SystemURLOpener()
 			return ScanResultActionsViewModel(
 				result: $0,
-				pasteboard: SystemPasteboard(),
-				sharing: SystemSharing(),
-				urlOpener: urlOpener,
-				phoneCaller: SystemPhoneCaller(),
-				mapsOpener: SystemMapsOpener(),
-				mailComposer: SystemMailComposer(urlOpener: urlOpener),
-				messageComposer: SystemMessageComposer(urlOpener: urlOpener),
-				wifiConnector: SystemWiFiConnector(),
-				contactPresenter: SystemContactPresenter(),
+				dependencies: ScanResultActionsViewModel.Dependencies(
+					pasteboard: SystemPasteboard(),
+					sharing: SystemSharing(),
+					urlOpener: urlOpener,
+					phoneCaller: SystemPhoneCaller(),
+					mapsOpener: SystemMapsOpener(),
+					mailComposer: SystemMailComposer(urlOpener: urlOpener),
+					messageComposer: SystemMessageComposer(urlOpener: urlOpener),
+					wifiConnector: SystemWiFiConnector(),
+					contactPresenter: SystemContactPresenter(),
+				),
 			)
 		},
 	)
