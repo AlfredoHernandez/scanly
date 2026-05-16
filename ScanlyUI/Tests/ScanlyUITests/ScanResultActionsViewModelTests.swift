@@ -176,6 +176,33 @@ struct ScanResultActionsViewModelTests {
 		#expect(env.urlOpener.openedURLs.isEmpty)
 	}
 
+	// MARK: - dismissToast()
+
+	@Test
+	func `dismissToast clears the toast message`() async throws {
+		let (sut, env) = makeSUT(type: .email(EmailPayload(address: "me@example.com")))
+		env.mailComposer.composeError = .notAvailable
+		sut.performPrimaryAction()
+		try await waitUntil { sut.toastMessage != nil }
+
+		sut.dismissToast()
+
+		#expect(sut.toastMessage == nil)
+	}
+
+	@Test
+	func `a failure after the toast was dismissed raises the toast again`() async throws {
+		let (sut, env) = makeSUT(type: .email(EmailPayload(address: "me@example.com")))
+		env.mailComposer.composeError = .notAvailable
+		sut.performPrimaryAction()
+		try await waitUntil { sut.toastMessage != nil }
+		sut.dismissToast()
+
+		sut.performPrimaryAction()
+
+		try await waitUntil { sut.toastMessage != nil }
+	}
+
 	// MARK: - Helpers
 
 	private func makeSUT(

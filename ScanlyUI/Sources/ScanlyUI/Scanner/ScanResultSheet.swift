@@ -52,6 +52,9 @@ public struct ScanResultSheet: View {
 			} message: { url in
 				Text(verbatim: urlAlertMessage(for: url))
 			}
+			.toast(message: actions.toastMessage) {
+				actions.dismissToast()
+			}
 		}
 	}
 
