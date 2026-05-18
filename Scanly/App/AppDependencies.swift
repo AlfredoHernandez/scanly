@@ -50,6 +50,27 @@ final class AppDependencies {
 		historyViewModel = HistoryViewModel(repository: repository)
 	}
 
+	/// Builds the per-presentation action view-model for a scan result
+	/// sheet. A fresh instance is created for each presented `ScanResult`
+	/// so action state never leaks across scans.
+	func makeScanResultActionsViewModel(for result: ScanResult) -> ScanResultActionsViewModel {
+		let urlOpener = SystemURLOpener()
+		return ScanResultActionsViewModel(
+			result: result,
+			dependencies: ScanResultActionsViewModel.Dependencies(
+				pasteboard: SystemPasteboard(),
+				sharing: SystemSharing(),
+				urlOpener: urlOpener,
+				phoneCaller: SystemPhoneCaller(),
+				mapsOpener: SystemMapsOpener(),
+				mailComposer: SystemMailComposer(urlOpener: urlOpener),
+				messageComposer: SystemMessageComposer(urlOpener: urlOpener),
+				wifiConnector: SystemWiFiConnector(),
+				contactPresenter: SystemContactPresenter(),
+			),
+		)
+	}
+
 	private static func makeDefaultModelContainer() -> ModelContainer {
 		do {
 			let schema = Schema([ScanHistoryEntry.self])

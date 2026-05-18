@@ -33,29 +33,35 @@ open Scanly.xcodeproj
 
 ## Architecture
 
-Clean Architecture + MVVM with strict layer separation. Each feature lives under `Scanly/Features/<Feature>/` with three folders:
+Clean Architecture + MVVM, split across **two local Swift packages and a thin app target**:
 
-- **Domain** — pure Swift entities, content parsing, result models. No dependency on UIKit/AVFoundation/SwiftUI.
-- **Data** — adapters over Apple frameworks (AVFoundation, Vision), abstraction protocols (`QRScanning`, `TorchControlling`, `CameraControlling`, `CameraPreviewProviding`, `ImageBarcodeDetecting`), and their implementations.
-- **Presentation** — SwiftUI views and view models (`@MainActor`, `@Observable`).
+- **`ScanlyEngine`** (SPM package) — framework-facing logic, no SwiftUI. Two layers per feature:
+  - **Feature** — pure Swift entities, content parsing, result models. No dependency on UIKit/AVFoundation/SwiftUI.
+  - **Infrastructure** — adapters over Apple frameworks (AVFoundation, Vision, SwiftData) behind abstraction protocols (`QRScanning`, `TorchControlling`, `CameraControlling`, `CameraPreviewProviding`, `ImageBarcodeDetecting`, `ScanHistoryRepository`).
+- **`ScanlyUI`** (SPM package) — SwiftUI views and view models (`@MainActor`, `@Observable`). Depends on `ScanlyEngine`.
+- **`Scanly`** (app target) — thin composition root only: `App/` (dependency wiring, `AppCoordinator`, `AppLauncher`) and `RootTabView`. No feature logic.
 
-Cross-cutting code in `Scanly/Shared/`:
+Cross-cutting code lives in `ScanlyEngine/Sources/ScanlyEngine/Shared/`:
 
 - **Concurrency** — `LastWriterWinsPusher`, `Sleeper` (reusable primitives for structured concurrency and deterministic tests).
+- **Formatting** — `CoordinateFormatter`.
 - **Haptics** — `HapticFeedbackControlling` protocol and `UIKitHapticFeedback` adapter over `UIImpactFeedbackGenerator`.
 - **Logging** — `OSLog` categories per subsystem.
+- **Sound** — `DetectionSoundPlaying` protocol and `SystemSoundDetectionPlayer` adapter.
+
+Test doubles shared between both packages' test bundles live in a dedicated **`ScanlyEngineTestSupport`** library target — test code only, never linked into the app.
 
 ### Principles
 
 - SOLID, composition over inheritance, small functions with a single responsibility.
-- **Testability is a first-class requirement**: `Data` layers expose protocols so Apple frameworks can be replaced with spies/stubs in tests.
+- **Testability is a first-class requirement**: `Infrastructure` layers expose protocols so Apple frameworks can be replaced with spies/stubs in tests.
 - Types that cross concurrency boundaries are `Sendable`.
 
 ---
 
 ## Implemented features
 
-### Scanner (`Scanly/Features/Scanner`)
+### Scanner
 
 - Live scanning via `AVFoundation` (`AVFoundationQRScanner`).
 - QR detection from gallery images via `Vision` (`VisionImageBarcodeDetector`).
@@ -63,7 +69,12 @@ Cross-cutting code in `Scanly/Shared/`:
 - Debouncing of duplicate detections (`DetectionDebouncer`) and coalescing of state updates (`DetectionStateEmitter` + `LastWriterWinsPusher`).
 - Content parser (`QRContentParser`) with support for: URL, text, vCard, Wi-Fi, phone, email, SMS, and geographic location.
 - Result inspector with per-field copyable rows (`ScanResultSheet`, `QRType+Inspector`).
-- Haptic feedback on detection (`UIKitHapticFeedback`).
+- Post-detection flow: session pause while the result sheet is visible, content-based dismiss cooldown (`PostDismissCooldown`), haptic feedback, and detection sound (`SystemSoundDetectionPlayer`).
+
+### History
+
+- Local persistence of scans via `SwiftData` (`SwiftDataScanHistoryRepository` behind the `ScanHistoryRepository` protocol).
+- History list, per-scan detail view, and in-list search (`HistorySearch`).
 
 ### Logging
 
@@ -77,23 +88,17 @@ Logger.scanner.info("QR detected: type \(qrType, privacy: .public)")
 
 ## Testing
 
-- **Framework:** XCTest.
-- **Test layout** mirrors the source tree under `ScanlyTests/`.
-- **Hand-written doubles** — no mocking libraries. Today's doubles live next to the suites that use them:
-  - Scanner feature: `QRScannerSpy`, `TorchSpy`, `HapticFeedbackSpy` in `ScanlyTests/Features/Scanner/`.
-  - Shared concurrency: `ControllableSleeper` in `ScanlyTests/Shared/Concurrency/`.
-- Concurrency tests are deterministic: time is controlled via an injectable `Sleeper`.
+- **Framework:** [Swift Testing](https://developer.apple.com/documentation/testing) (`import Testing`, `@Test`, `#expect`).
+- **Test layout** — each package owns its bundle: `ScanlyEngine/Tests/ScanlyEngineTests/` and `ScanlyUI/Tests/ScanlyUITests/`, each mirroring its source tree. The app target keeps a minimal `ScanlyTests/` for composition-root integration tests.
+- **Hand-written doubles** — no mocking libraries. Shared doubles, fixtures, and async helpers (`QRScannerSpy`, `TorchSpy`, `HapticFeedbackSpy`, `ControllableSleeper`, `InMemoryScanHistoryRepository`, `WaitUntil`, …) live in the `ScanlyEngineTestSupport` target so both packages' bundles can reuse them.
+- Concurrency tests are deterministic: time is controlled via an injectable `Sleeper` / `TestClock`.
 
-Run tests from the command line:
+Run every test bundle (app target + both packages) from the command line:
 
 ```bash
-xcodebuild test \
-  -project Scanly.xcodeproj \
-  -scheme Scanly \
-  -destination 'generic/platform=iOS Simulator'
+./scripts/test.sh                    # auto-picks the first available iPhone simulator
+./scripts/test.sh "iPhone 17 Pro"    # pin to a specific simulator
 ```
-
-Or pin to a specific simulator if you need reproducibility (`-destination 'platform=iOS Simulator,OS=latest,name=iPhone 16'`).
 
 Or from Xcode with `⌘U`.
 
@@ -115,24 +120,28 @@ Or from Xcode with `⌘U`.
 
 ```text
 Scanly/
-├── Scanly/
+├── Scanly/                      # App target — thin composition root
+│   ├── App/                     # AppCoordinator, AppDependencies, AppLauncher
 │   ├── ScanlyApp.swift
-│   ├── ContentView.swift
-│   ├── Features/
-│   │   └── Scanner/
-│   │       ├── Data/
-│   │       ├── Domain/
-│   │       └── Presentation/
-│   └── Shared/
-│       ├── Concurrency/
-│       ├── Haptics/
-│       └── Logging/
-├── ScanlyTests/
-│   ├── Features/Scanner/
-│   └── Shared/Concurrency/
+│   └── RootTabView.swift
+├── ScanlyTests/                 # App-target integration tests
+├── ScanlyEngine/                # SPM package — domain + framework adapters
+│   ├── Package.swift
+│   ├── Sources/
+│   │   ├── ScanlyEngine/
+│   │   │   ├── History/         # Feature/, Infrastructure/
+│   │   │   ├── Scanner/         # Feature/, Infrastructure/
+│   │   │   └── Shared/          # Concurrency, Formatting, Haptics, Logging, Sound
+│   │   └── ScanlyEngineTestSupport/   # Shared test doubles and fixtures
+│   └── Tests/ScanlyEngineTests/
+├── ScanlyUI/                    # SPM package — SwiftUI views + view models
+│   ├── Package.swift
+│   ├── Sources/ScanlyUI/        # History/, Scanner/, Previews/
+│   └── Tests/ScanlyUITests/
 ├── scripts/
 │   ├── pre-commit
-│   └── format.sh
+│   ├── format.sh
+│   └── test.sh
 ├── install.sh
 └── Scanly.xcodeproj
 ```

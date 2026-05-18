@@ -20,17 +20,20 @@ public struct ScannerView: View {
 	private let previewProvider: any CameraPreviewProviding
 	private let cameraControls: any CameraControlling
 	private let imageDetector: any ImageBarcodeDetecting
+	private let makeScanResultActions: @MainActor (ScanResult) -> ScanResultActionsViewModel
 
 	public init(
 		viewModel: ScannerViewModel,
 		previewProvider: any CameraPreviewProviding,
 		cameraControls: any CameraControlling,
 		imageDetector: any ImageBarcodeDetecting,
+		makeScanResultActions: @escaping @MainActor (ScanResult) -> ScanResultActionsViewModel,
 	) {
 		_viewModel = State(wrappedValue: viewModel)
 		self.previewProvider = previewProvider
 		self.cameraControls = cameraControls
 		self.imageDetector = imageDetector
+		self.makeScanResultActions = makeScanResultActions
 	}
 
 	public var body: some View {
@@ -71,7 +74,7 @@ public struct ScannerView: View {
 			}
 		}
 		.sheet(item: $coordinator.latestResult) { result in
-			ScanResultSheet(result: result)
+			ScanResultSheet(actions: makeScanResultActions(result))
 				.presentationDetents([.height(220), .medium, .large])
 				.presentationBackground(.thinMaterial)
 		}
@@ -358,5 +361,22 @@ private final class PreviewScannerSettings: ScannerSettingsReading {
 		previewProvider: stub,
 		cameraControls: stub,
 		imageDetector: PreviewImageDetector(),
+		makeScanResultActions: {
+			let urlOpener = SystemURLOpener()
+			return ScanResultActionsViewModel(
+				result: $0,
+				dependencies: ScanResultActionsViewModel.Dependencies(
+					pasteboard: SystemPasteboard(),
+					sharing: SystemSharing(),
+					urlOpener: urlOpener,
+					phoneCaller: SystemPhoneCaller(),
+					mapsOpener: SystemMapsOpener(),
+					mailComposer: SystemMailComposer(urlOpener: urlOpener),
+					messageComposer: SystemMessageComposer(urlOpener: urlOpener),
+					wifiConnector: SystemWiFiConnector(),
+					contactPresenter: SystemContactPresenter(),
+				),
+			)
+		},
 	)
 }
