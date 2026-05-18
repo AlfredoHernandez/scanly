@@ -86,6 +86,11 @@ public final class ScanResultActionsViewModel {
 	/// (§10.3.5).
 	public private(set) var toastMessage: String?
 
+	/// Whether an asynchronous primary action is currently running. The
+	/// sheet disables the primary call-to-action while this is `true` so
+	/// a rapid double-tap cannot fire the action twice.
+	public private(set) var isPerformingAction = false
+
 	private let dependencies: Dependencies
 
 	public init(result: ScanResult, dependencies: Dependencies) {
@@ -124,21 +129,19 @@ public final class ScanResultActionsViewModel {
 			activeAlert = .urlConfirmation(url)
 
 		case let .call(number):
-			// Fire-and-forget: v1.0 surfaces no in-sheet UI for a failed
-			// call (e.g. on a Wi-Fi-only device) — see §10.3.6.
-			Task { await dependencies.phoneCaller.call(number) }
+			performAsyncAction { await self.placeCall(number) }
 
 		case let .openMaps(latitude, longitude):
 			dependencies.mapsOpener.openMaps(latitude: latitude, longitude: longitude)
 
 		case let .composeEmail(payload):
-			Task { await composeEmail(payload) }
+			performAsyncAction { await self.composeEmail(payload) }
 
 		case let .sendSMS(payload):
-			Task { await sendSMS(payload) }
+			performAsyncAction { await self.sendSMS(payload) }
 
 		case let .connectWiFi(credentials):
-			Task { await connectWiFi(credentials) }
+			performAsyncAction { await self.connectWiFi(credentials) }
 
 		case let .addContact(vCard):
 			addContact(fromVCard: vCard)
@@ -146,6 +149,27 @@ public final class ScanResultActionsViewModel {
 		case .share:
 			share()
 		}
+	}
+
+	/// Runs an asynchronous primary action under an in-flight guard: while
+	/// one is running `isPerformingAction` is `true` and the sheet disables
+	/// the primary call-to-action, so a rapid double-tap fires the action
+	/// only once. The synchronous cases need no guard — a modal alert or a
+	/// presented composer already blocks a second tap.
+	private func performAsyncAction(_ operation: @escaping () async -> Void) {
+		guard !isPerformingAction else { return }
+		isPerformingAction = true
+		Task {
+			await operation()
+			isPerformingAction = false
+		}
+	}
+
+	/// Places the call for a phone scan. Fire-and-forget: v1.0 surfaces no
+	/// in-sheet UI for a failed call (e.g. on a Wi-Fi-only device) — see
+	/// §10.3.6.
+	private func placeCall(_ number: String) async {
+		await dependencies.phoneCaller.call(number)
 	}
 
 	/// Presents the email composer for the scanned payload, surfacing a

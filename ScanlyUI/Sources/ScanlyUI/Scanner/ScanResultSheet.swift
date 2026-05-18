@@ -67,6 +67,7 @@ public struct ScanResultSheet: View {
 		}
 		.buttonStyle(.glassProminent)
 		.controlSize(.large)
+		.disabled(actions.isPerformingAction)
 		.padding()
 	}
 

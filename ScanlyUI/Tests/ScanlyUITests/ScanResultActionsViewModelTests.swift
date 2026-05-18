@@ -192,6 +192,30 @@ struct ScanResultActionsViewModelTests {
 		#expect(sut.toastMessage == String(localized: "scanner.action.contact.invalid"))
 	}
 
+	// MARK: - performPrimaryAction() in-flight guard
+
+	@Test
+	func `performPrimaryAction marks the view model busy while an async action runs`() async throws {
+		let (sut, _) = makeSUT(type: .wifi(WiFiCredentials(ssid: "HomeNet", security: .none)))
+
+		sut.performPrimaryAction()
+
+		#expect(sut.isPerformingAction)
+		try await waitUntil { !sut.isPerformingAction }
+	}
+
+	@Test
+	func `performPrimaryAction ignores a second tap while an async action is in flight`() async throws {
+		let credentials = WiFiCredentials(ssid: "HomeNet", security: .none)
+		let (sut, env) = makeSUT(type: .wifi(credentials))
+
+		sut.performPrimaryAction()
+		sut.performPrimaryAction()
+
+		try await waitUntil { !sut.isPerformingAction }
+		#expect(env.wifiConnector.connectedCredentials == [credentials])
+	}
+
 	// MARK: - confirmURLOpen()
 
 	@Test
