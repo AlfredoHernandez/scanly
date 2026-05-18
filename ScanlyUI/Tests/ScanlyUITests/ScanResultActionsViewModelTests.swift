@@ -65,6 +65,7 @@ struct ScanResultActionsViewModelTests {
 		sut.performPrimaryAction()
 
 		#expect(env.sharing.sharedItems == ["just some text"])
+		#expect(!sut.isPerformingAction, "A synchronous primary action never marks the view model busy")
 	}
 
 	@Test
@@ -116,6 +117,7 @@ struct ScanResultActionsViewModelTests {
 		sut.performPrimaryAction()
 
 		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.email.unavailable") }
+		#expect(!sut.isPerformingAction, "A failed async action must re-enable the primary button")
 	}
 
 	@Test
@@ -158,6 +160,7 @@ struct ScanResultActionsViewModelTests {
 		sut.performPrimaryAction()
 
 		try await waitUntil { sut.toastMessage == String(localized: "scanner.action.wifi.failed") }
+		#expect(!sut.isPerformingAction, "A failed async action must re-enable the primary button")
 	}
 
 	@Test

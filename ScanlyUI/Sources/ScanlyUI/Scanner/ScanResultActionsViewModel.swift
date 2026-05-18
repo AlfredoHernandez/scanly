@@ -160,8 +160,11 @@ public final class ScanResultActionsViewModel {
 		guard !isPerformingAction else { return }
 		isPerformingAction = true
 		Task {
+			// Clear the flag via `defer` so the primary button cannot
+			// stay latched if `operation` is ever made to throw or honor
+			// cancellation.
+			defer { isPerformingAction = false }
 			await operation()
-			isPerformingAction = false
 		}
 	}
 
