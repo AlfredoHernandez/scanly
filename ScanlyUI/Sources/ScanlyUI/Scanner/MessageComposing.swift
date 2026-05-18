@@ -65,8 +65,9 @@ public struct SystemMessageComposer: MessageComposing {
 	}
 
 	/// Builds the `sms:` fallback URL for `payload`. Module-internal
-	/// (not `private`) so the body's percent-encoding stays unit-testable.
-	static func smsURL(for payload: SMSPayload) -> URL? {
+	/// (not `private`) so the body's percent-encoding stays unit-testable;
+	/// `nonisolated` because it is pure string work with no UI dependency.
+	nonisolated static func smsURL(for payload: SMSPayload) -> URL? {
 		// `sms:` rejects raw spaces in the number; the body rides along
 		// as iOS's non-standard `&body=` parameter.
 		var string = "sms:" + payload.number.filter { !$0.isWhitespace }

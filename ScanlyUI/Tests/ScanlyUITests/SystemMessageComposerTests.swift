@@ -7,7 +7,6 @@
 import Foundation
 import Testing
 
-@MainActor
 struct SystemMessageComposerTests {
 	// MARK: - smsURL(for:)
 
